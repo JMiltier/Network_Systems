@@ -14,7 +14,7 @@ A *C Language* program that sends UDP packets to a specified host.
      - Complile the *C*-program  
         `gcc udp_client.c -o udp_client`  
         `gcc udp_server.c -o udp_server`   
-        *OR* run [makefile](makefile) commands (above)
+        *OR* run [makefile](#makefile) commands (above)
      - Run client with a given server IP and port number
         `./client 192.168.1.101 5001`
 
