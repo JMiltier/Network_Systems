@@ -1,5 +1,10 @@
+# ignore any generated dummy code, debug symbols files (crash reports), txt, tar, or pdf files
 *.pdf
 *.tar
+*.txt
 foo*
-client
-server
+*.dSYM
+
+# ignore generated executed (compiled) code, use makefile to create
+udp_client
+udp_server
