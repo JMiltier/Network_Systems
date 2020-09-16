@@ -1,4 +1,4 @@
-# ![Network](UDP_Sockets/sample_data/network.png | width=20) Network Systems
+# <img src="UDP_Sockets/sample_data/network.png" data-canonical-src="UDP_Sockets/sample_data/network.png" width="25" height="25" /> Network Systems
 Design and implementation of network programs and systems, to include network protocols, file transfer, client-server computing, remote procedure call, and other contemporary network system design and programming techniques. Programs designed with with *C* on *Unix OS*.
 
 ### Table of Contents
