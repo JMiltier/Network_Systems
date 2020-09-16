@@ -4,6 +4,10 @@ A connectionless transmission model with a minimum protocol mechanism. Unlike TC
 ### Program
 A *C Language* program that sends UDP packets to a specified host.
 
+### Makefile
+- To *create* executable objects of client and server, run `make` within the **udp** directory.
+    - Note: Compiler warning messages are disabled.
+- To *remove/clean* objects created, run `make clean`.
 
 ### Commands
 1. Client takes two command line arguments. The first is the IP address, and the second is the port number the server application is using. To find the IP address of the current server, try `hostname -i` (Linux).
