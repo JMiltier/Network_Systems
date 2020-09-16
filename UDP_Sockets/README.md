@@ -23,8 +23,8 @@ Find IP of server: `ip addr`
 
 #### Sending requests to server
   1. Create object executable files, listed under [CLI Commands](#clicommands) above.
-  2. Open port on server to connect incoming traffic to `./server <port>`
-  3. Connect to the server with  `./client <server ip> <port> <command>`
+  2. Open port on server to connect incoming traffic to `./udp_server <port>`
+  3. Connect to the server with  `./udp_client <server ip> <port> <command>`
   4. Enter message when prompted on the client  
   5. *Note: this can be run locally, using different ports for the server and client*  
     ![server connection](./sample_data/udp_server_connection.png)  ![client connection](./sample_data/udp_client_connection.png)
