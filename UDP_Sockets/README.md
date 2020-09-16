@@ -23,7 +23,7 @@ SSH into Linux VM: `ssh <IDENTIKEY>@elra-##.cs.colorado.edu`, ## can be 01, 02, 
 Find IP of server: `ip addr`  
 
 #### Sending requests to server
-  1. Create object executable files, listed under [CLI Commands](#clicommands) above.
+  1. Create object executable files, listed under [CLI Commands](#cli-commands) above.
   2. Open port on server to connect incoming traffic to `./udp_server <port>`
   3. Connect to the server with  `./udp_client <server ip> <port> <command>`
   4. Enter message when prompted on the client  
