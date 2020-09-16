@@ -29,7 +29,7 @@ Find IP of server: `ip addr`
   5. *Note: this can be run locally, using different ports for the server and client*  
     ![server connection](./sample_data/udp_server_connection.png)  ![client connection](./sample_data/udp_client_connection.png)
 
-#### UDP User (client) Commands
+## USE: UDP User (client) Commands
   1. `get <file_name>`
   2. `put <file_name>`
   3. `delete <file_name>`
