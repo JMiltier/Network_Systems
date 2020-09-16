@@ -1,3 +1,5 @@
 *.pdf
 *.tar
 foo*
+client
+server

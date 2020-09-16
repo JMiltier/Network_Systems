@@ -12,13 +12,13 @@ A *C Language* program that sends UDP packets to a specified host.
   - Run client with a given server IP and port number
     `./client 192.168.1.101 5001`
 
-#### Connect to CU Boulder's server:
+#### Connect to one of CU Boulder's server:
 SSH into server: `ssh <IDENTIKEY>@elra-##.cs.colorado.edu`, ## can be 01, 02, 03, or 04
 Password is same as IDENTIKEYs
 Find IP of server: `ip addr`
 
 ##### Sending echo requests to server
   1. Create .exe for client `gcc udp_client.c -o client`
-  2. Create .eve for server `gcc udp_server.c -o server`
+  2. Create .exe for server `gcc udp_server.c -o server`
   3. Open port on server to connect incoming traffic to `./server <port>`
   4. Send an **echo** request to the server `./client <server ip> <port>`
