@@ -4,7 +4,7 @@ A connectionless transmission model with a minimum protocol mechanism. Unlike TC
 ### Program
 A *C Language* program that sends UDP commands/packets to a specified server host from a client host.
 
-## SETUP
+## ⚙️ SETUP
 ### Makefile
 - To *create* executable objects of client and server, run `make` within the **udp** directory.
   - Note: Compiler warning messages are disabled.
