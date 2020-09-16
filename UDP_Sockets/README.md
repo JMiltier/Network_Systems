@@ -27,7 +27,7 @@ Find IP of server: `ip addr`
   3. Connect to the server with  `./client <server ip> <port> <command>`
   4. Enter message when prompted on the client
   5. *Note: this can be run locally, using different ports for the server and client*
-    ![server connection](./sample_data/udp_server_connection)  ![client connection](./sample_data/udp_client_connection
+    ![server connection](./sample_data/udp_server_connection.png)  ![client connection](./sample_data/udp_client_connection.png)
 
 #### UDP User (client) Commands
   1. `get <file_name>`
@@ -36,4 +36,4 @@ Find IP of server: `ip addr`
   4. `ls`
   5. `exit`
   6. Any command not listed above will *echo*
-    ![client echo](./sample_data/udp_client_echo)  ![server echo](./sample_data/udp_server_echo)
+    ![client echo](./sample_data/udp_client_echo.png)  ![server echo](./sample_data/udp_server_echo.png)
