@@ -16,7 +16,7 @@ A *C Language* program that sends UDP packets to a specified host.
   - Run client with a given server IP and port number
     `./client 192.168.1.101 5001`
 
-#### Connect to one of CU Boulder's server:
+#### Connect to one of CUB's elra servers:
 SSH into server: `ssh <IDENTIKEY>@elra-##.cs.colorado.edu`, ## can be 01, 02, 03, or 04
 Password is same as IDENTIKEYs
 Find IP of server: `ip addr`
