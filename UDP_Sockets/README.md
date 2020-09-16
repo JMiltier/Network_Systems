@@ -17,9 +17,9 @@ The **client** executable file takes two command line arguments. The first is th
     *OR* run [makefile](#makefile) commands (details in section above)  
 
 #### Connect to one of CUB's elra servers:
-SSH into Linux VM: `ssh <IDENTIKEY>@elra-##.cs.colorado.edu`, ## can be 01, 02, 03, or 04
-*Password* is same as IDENTIKEYs
-Find IP of server: `ip addr`
+SSH into Linux VM: `ssh <IDENTIKEY>@elra-##.cs.colorado.edu`, ## can be 01, 02, 03, or 04  
+*Password* is same as IDENTIKEYs  
+Find IP of server: `ip addr`  
 
 #### Sending requests to server
   1. Create object executable files, listed under [CLI Commands](#clicommands) above.
