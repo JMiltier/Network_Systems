@@ -24,8 +24,7 @@ Password is same as IDENTIKEYs
 Find IP of server: `ip addr`
 
 #### Sending echo requests to server
-  1. Create .exe for client `gcc udp_client.c -o udp_client`
-  2. Create .exe for server `gcc udp_server.c -o udp_server`
-  3. Open port on server to connect incoming traffic to `./server <port>`
-  4. Send an **echo** request to the server `./client <server ip> <port>`
-  5. Enter message when prompted on the client
+  1. [Create object files](#commands).
+  2. Open port on server to connect incoming traffic to `./server <port>`
+  3. Send an **echo** request to the server `./client <server ip> <port>`
+  4. Enter message when prompted on the client
