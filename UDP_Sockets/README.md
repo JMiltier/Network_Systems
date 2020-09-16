@@ -21,7 +21,7 @@ SSH into server: `ssh <IDENTIKEY>@elra-##.cs.colorado.edu`, ## can be 01, 02, 03
 Password is same as IDENTIKEYs
 Find IP of server: `ip addr`
 
-##### Sending echo requests to server
+#### Sending echo requests to server
   1. Create .exe for client `gcc udp_client.c -o client`
   2. Create .exe for server `gcc udp_server.c -o server`
   3. Open port on server to connect incoming traffic to `./server <port>`
