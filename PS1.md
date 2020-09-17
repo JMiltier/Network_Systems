@@ -1,6 +1,6 @@
 ## CSCI 4273, Problem Set 1  
 ### Josh Miltier
-
+----
 **Questions** are in **bold**  
 Answers in normal font  
 
@@ -18,33 +18,33 @@ Answers in normal font
 
 
 **2. (3pts) What advantage does TDM have over FDM in a circuit switched network?**  
-  TDM - different time domains (digital)
-  FDM - different frequencies over a common medium (like analog)  
+  TDM - different time domains (digital)  
+  FDM - different frequencies over a common medium (like analog)
   When multiple signals are being transmitted, TDM uses different time slots, preventing any crosstalk from occurring. In FDM, crosstalk can occur since the signals are over different frequency slots, but still through a common link. This leads TDM to be more efficient than FDM, mainly due to no interferences.
 
-
 __3. (21pts) Consider two hosts, A and B, which are connected by a link (**R** bps). Suppose that the two hosts are separated by **m** meters, and the speed along with link is **s** meters/sec. Host A is to send a packet of size **L** bits to Host B.__  
-      **a. Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**  
-        d<sub>prop</sub> = **m**/**s** (distance / speed; result measured in units of time)  
-      **b. Determine the transmission time of the packet, d<sub>trans</sub>, in terms of L and R.**  
-        d<sub>trans</sub> = **L**/**R**  (packet size / bit rate; result measured in units of time)       
-      **c. Ignoring processing and queuing delays, obtain an expression for the end-to-end delay (one-way delay from Host A to Host B).**  
-        One-way delay = d<sub>trans</sub> + d<sub>prop</sub> (transmission time + propagation delay; result measured in units of time)  
-      **d. Suppose Host A begins to transmit the packet at time t = 0, At time t = d<sub>trans</sub>, where is the last bit of the packet?**
-        Since measuring in bps: when time is equal to d<sub>trans</sub>, the last bit of the packet would be leaving from Host A.  
-      **e. Suppose d<sub>prop</sub> is greater than d<sub>trans</sub>. At time t = d<sub>trans</sub>, where is the first bit of the packet?**
-        The transmission time is lesser than the propagation delay, so the first bit of the packet is somewhere in transmission still.  
-      **f. Suppose d<sub>prop</sub> is less than d<sub>trans</sub> . At time t = d<sub>trans</sub>, where is the first bit of the packet?**
-        Contrary to the last question - since the transmission time is greater than the propagation delay, the first bit should have reached it's end host.  
-      **g. Suppose s = 2.5 * 10<sup>8</sup>, L = 120bits, and R = 56Kbps. Find the distance m so that d<sub>prop</sub> equals d<sub>trans</sub>.**   
-        When d<sub>prop</sub> = d<sub>trans</sub, what's the distance (m):  
-        m / (2.5 * 10<sup>8</sup>m/s) = (120bits / 56Kbps)                    [move m to one side, and change units to match]  
-        m = (120bits / 56 * 10<sup>3</sup>bps) * (2.5 * 10<sup>8</sup>m/s)    [subtract those powers]  
-        m = (120bits / 56 bps) * (2.5 * 10<sup>5</sup>m/s)                    [probably covert the m to km]  
-        m = (120bits / 56 bps) * (250km/s)     [now math]  
-        m = (120bits * 250km/s) / 56 bps  
-        m = 30000 b*km/s / 56bps                [bps cancels]  
-        m = 535.71 km                           [if we ignore significant decimal places]  
+
+  **a. Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**  
+    d<sub>prop</sub> = **m**/**s** (distance / speed; result measured in units of time)  
+  **b. Determine the transmission time of the packet, d<sub>trans</sub>, in terms of L and R.**  
+    d<sub>trans</sub> = **L**/**R**  (packet size / bit rate; result measured in units of time)       
+  **c. Ignoring processing and queuing delays, obtain an expression for the end-to-end delay (one-way delay from Host A to Host B).**  
+    One-way delay = d<sub>trans</sub> + d<sub>prop</sub> (transmission time + propagation delay; result measured in units of time)  
+  **d. Suppose Host A begins to transmit the packet at time t = 0, At time t = d<sub>trans</sub>, where is the last bit of the packet?**
+    Since measuring in bps: when time is equal to d<sub>trans</sub>, the last bit of the packet would be leaving from Host A.  
+  **e. Suppose d<sub>prop</sub> is greater than d<sub>trans</sub>. At time t = d<sub>trans</sub>, where is the first bit of the packet?**
+    The transmission time is lesser than the propagation delay, so the first bit of the packet is somewhere in transmission still.  
+  **f. Suppose d<sub>prop</sub> is less than d<sub>trans</sub> . At time t = d<sub>trans</sub>, where is the first bit of the packet?**
+    Contrary to the last question - since the transmission time is greater than the propagation delay, the first bit should have reached it's end host.  
+  **g. Suppose s = 2.5 * 10<sup>8</sup>, L = 120bits, and R = 56Kbps. Find the distance m so that d<sub>prop</sub> equals d<sub>trans</sub>.**   
+    When d<sub>prop</sub> = d<sub>trans</sub>, what's the distance (m):  
+    m / (2.5 * 10<sup>8</sup>m/s) = (120bits / 56Kbps)                    [move m to one side, and change units to match]  
+    m = (120bits / 56 * 10<sup>3</sup>bps) * (2.5 * 10<sup>8</sup>m/s)    [subtract those powers]  
+    m = (120bits / 56 bps) * (2.5 * 10<sup>5</sup>m/s)                    [probably covert the m to km]  
+    m = (120bits / 56 bps) * (250km/s)     [now math]  
+    m = (120bits * 250km/s) / 56 bps  
+    m = 30000 b*km/s / 56bps                [bps cancels]  
+    m = 535.71 km                           [if we ignore significant decimal places]  
 
 
 **4. (8pts) We consider sending real-time voice from Host A to Host B over a packet-switched network. Host A converts analog voice to a digital 65kbps bit stream and send these bits into 56-byte packets. There is one link between Hosts A and B and the transmission rate is 1 Mbps and its propagation delay is 20 msec. As soon as Host A gathers a packet, it sends it to Host B. As soon as Host B receives an entire packet, it converts the packet’s bits into an analog signal. How much time elapses from the time a bit is created (from the original analog signal at Host A) until the bit is decoded (as part of the analog signal at Host B)?**  
