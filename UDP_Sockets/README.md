@@ -1,4 +1,4 @@
-## 🌐 UDP Sockets
+# 🌐 UDP Sockets
 A connectionless transmission model with a minimum protocol mechanism. Unlike TCP, UDP (Use Datagram Protocol) have no handshaking/acknowledgements of data (No ACKs). Because of this, it's not guaranteed that any data is received by the end host. The up side, this avoids some delays due to it's simplicity.
 
 ### Program
