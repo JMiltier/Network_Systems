@@ -1,6 +1,6 @@
 ## CSCI 4273, Problem Set 1  
-### Josh Miltier
-----
+## Josh Miltier
+
 **Questions** are in **bold**  
 > Answers in normal font, tabbed
 
@@ -24,9 +24,9 @@
 
 ### 3. (21pts) Consider two hosts, A and B, which are connected by a link (**R** bps). Suppose that the two hosts are separated by **m** meters, and the speed along with link is **s** meters/sec. Host A is to send a packet of size **L** bits to Host B.   
   1. **Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**    
-  > d<sub>prop</sub> = **m**/**s** (distance / speed; result measured in units of time)  
+   > d<sub>prop</sub> = **m**/**s** (distance / speed; result measured in units of time)  
   2. **Determine the transmission time of the packet, d<sub>trans</sub>, in terms of L and R.**  
-  > d<sub>trans</sub> = **L**/**R**  (packet size / bit rate; result measured in units of time)       
+   > d<sub>trans</sub> = **L**/**R**  (packet size / bit rate; result measured in units of time)       
   3. **Ignoring processing and queuing delays, obtain an expression for the end-to-end delay (one-way delay from Host A to Host B).**  
    > One-way delay = d<sub>trans</sub> + d<sub>prop</sub> (transmission time + propagation delay; result measured in units of time)  
   4. **Suppose Host A begins to transmit the packet at time t = 0, At time t = d<sub>trans</sub>, where is the last bit of the packet?**
