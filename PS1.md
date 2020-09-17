@@ -14,16 +14,16 @@
 ----
 
 ### 1. (3pts) What advantage does a circuit-switched network have over a packet-switched network? 
-  > The performance of a circuit-switched network is predictable, because it's a dedicated connection/channel from point to point. This makes it very reliable with simple forwarding. Imagining when telephone companies would have switchboard operators to connect calls (though they still exist, but are automated). Very direct and straight through. No other calls could use that switch connection until the call was terminated (pre call waiting).
+   > The performance of a circuit-switched network is predictable, because it's a dedicated connection/channel from point to point. This makes it very reliable with simple forwarding. Imagining when telephone companies would have switchboard operators to connect calls (though they still exist, but are automated). Very direct and straight through. No other calls could use that switch connection until the call was terminated (pre call waiting).
 
 
 ### 2. (3pts) What advantage does TDM have over FDM in a circuit switched network?
-  > TDM - different time domains (digital)  
-  > FDM - different frequencies over a common medium (like analog)
-  > When multiple signals are being transmitted, TDM uses different time slots, preventing any crosstalk from occurring. In FDM, crosstalk can occur since the signals are over different frequency slots, but still through a common link. This leads TDM to be more efficient than FDM, mainly due to no interferences.
+   > TDM - different time domains (digital)  
+   > FDM - different frequencies over a common medium (like analog)
+   > When multiple signals are being transmitted, TDM uses different time slots, preventing any crosstalk from occurring. In FDM, crosstalk can occur since the signals are over different frequency slots, but still through a common link. This leads TDM to be more efficient than FDM, mainly due to no interferences.
 
 ### 3. (21pts) Consider two hosts, A and B, which are connected by a link (**R** bps). Suppose that the two hosts are separated by **m** meters, and the speed along with link is **s** meters/sec. Host A is to send a packet of size **L** bits to Host B.   
-  1. **Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**  
+  1. **Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**    
    > d<sub>prop</sub> = **m**/**s** (distance / speed; result measured in units of time)  
   2. **Determine the transmission time of the packet, d<sub>trans</sub>, in terms of L and R.**  
    > d<sub>trans</sub> = **L**/**R**  (packet size / bit rate; result measured in units of time)       
@@ -56,39 +56,39 @@
 
 ### 5. (12pts) Consider a Go-Back-N sliding window algorithm (1 packet is 250 bytes long) running over a 100km point-to-point fiber link with bandwidth of 100 Mbps.    
   1. **Compute the one-way propagation delay for this link, assuming that the speed of light is 2 x 10<sup>8</sup> m/s in the fiber.**  
-    > d<sub>prop</sub> = 100,000m / 2 x 10<sup>8</sup> m/s = *0.5ms* (or 500μs)  
+  > d<sub>prop</sub> = 100,000m / 2 x 10<sup>8</sup> m/s = *0.5ms* (or 500μs)  
   2. **Suggest a suitable timeout value for the algorithm to use. List factors you need to consider.**  
-    > A good timeout value would be 1ms (double d<sub>prop</sub>), given that the link is reliable  
+  > A good timeout value would be 1ms (double d<sub>prop</sub>), given that the link is reliable  
   3. **Suggest N to achieve 100% utilization in this link.**  
-    > d<sub>trans</sub> = (250 * 8 bits) / 100,000,000bps = 20μs  
-    > N >= ceiling[(2 * 500μs)/20] + 1 = *51 packets*
+  > d<sub>trans</sub> = (250 * 8 bits) / 100,000,000bps = 20μs  
+  > N >= ceiling[(2 * 500μs)/20] + 1 = *51 packets*
 
 
 ### 6. (12pts) Suppose a 1-Gbps point-to-point link is being set up between the Earth and a new lunar colony. The distance from the moon to the Earth is approximately 385,000 km, and data travels over the link at the speed of light—3×10<sub>8</sub> m/s.    
   1. **Calculate the minimum RTT for the link.**  
-     > One way would be 385,000km / 3×10<sub>5</sub>km/s = 1.28333 seconds (capture 6 numerical places)  
-     > So round time travel would be double or 2.56666 seconds.  
+    > One way would be 385,000km / 3×10<sub>5</sub>km/s = 1.28333 seconds (capture 6 numerical places)  
+    > So round time travel would be double or 2.56666 seconds.  
   2. **Using the RTT as the delay, calculate the delay × bandwidth product for the link.**  
-     > RTT = 2.56666s  
-     > 2.56666s × 1Gbps = 2.56666Gb (Giga-bits, not bytes!, but to be nice, we could say 320.833MB)  
+    > RTT = 2.56666s  
+    > 2.56666s × 1Gbps = 2.56666Gb (Giga-bits, not bytes!, but to be nice, we could say 320.833MB)  
   3. **What is the significance of the delay × bandwidth product computed in (b)?**  
-     > This is the amount (320.833MB) of data than can be transmitted before the lunar colony's response is received back to Earth. This is assuming they send a response at the first bit, which is when half that amount of data has been sent. In other words, a stream of ~160MB from Earth is sent for 1.28333 seconds before the lunar colony gets the first bit.
+    > This is the amount (320.833MB) of data than can be transmitted before the lunar colony's response is received back to Earth. This is assuming they send a response at the first bit, which is when half that amount of data has been sent. In other words, a stream of ~160MB from Earth is sent for 1.28333 seconds before the lunar colony gets the first bit.
 
 
 ### 7. (12pts) Host A wants to send a 1,000 KB file to Host B. The Round Trip Time (RTT) of the Duplex Link between Host A and B is 160ms. Packet size is 1KB. A handshake between A and B is needed before data packets can start transferring which takes 2xRTT. Calculate the total required time of file transfer in the following cases. The transfer is considered complete when the acknowledgement for the final packet reaches A.    
   > Summary: A -> 1MB -> B, RTT = 160ms, L = 1KB, handshakes are 2xRTT, need to calculate time for file transfers when final packet reaches A  
    1. **The bandwidth of the link is 4Mbps. Data packets can be continuously transferred on the link.**  
-     > initial handshake + d<sub>trans</sub> + d<sub>prop</sub> of last packet
-     > (2 * 0.16sec) + (1,000bytes * 8bits / 4,000,000bps) + (0.16sec / 2)
-     >  320ms + (1000 * 2ms) + 80ms = *2.4 seconds*   
+   > initial handshake + d<sub>trans</sub> + d<sub>prop</sub> of last packet
+   > (2 * 0.16sec) + (1,000bytes * 8bits / 4,000,000bps) + (0.16sec / 2)
+   >  320ms + (1000 * 2ms) + 80ms = *2.4 seconds*   
    2. **The bandwidth of the link is 4Mbps. After sending each packet, A need to wait one RTT before the next packet can be transferred.**  
-     > Using equation from above, but adding in an RTT each time: 320ms + (1000 * (2ms + 160ms)) + 80ms = *162.4 seconds*   
+   > Using equation from above, but adding in an RTT each time: 320ms + (1000 * (2ms + 160ms)) + 80ms = *162.4 seconds*   
    3. **Assume we have “unlimited” bandwidth on the link, meaning that we assume transmit time to be zero. After sending 50 packets, A need to wait one RTT before sending next group of 50 packets.**  
-     > Sending 1000 packets, so will need to factor in 20 RTTs (20 * 50 = 1000), no need to factor transmission time, cause it's FAST (still factor last packet)
-     > (160ms * 20) + 80ms = *3.28 seconds*  
+   > Sending 1000 packets, so will need to factor in 20 RTTs (20 * 50 = 1000), no need to factor transmission time, cause it's FAST (still factor last packet)
+   > (160ms * 20) + 80ms = *3.28 seconds*  
    4. **The bandwidth of the link is 4Mbps. During the first transmission A can send one (2<sup>1-1</sup>) packets, during the 2<sup>nd</sup> transmission A can send 2<sup>2-1</sup> packets, during the 3rd transmission A can send 2<sup>3-1</sup> packets, and so on. Assume A still need to wait for 1 RTT between each transmission.**  
-     > A pattern seems to occur which is on the nth transmission, 2<sup>n-1</sup> packets can be sent. Expanding this: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 = over 1000 packets, so we're good there. We need to send 10 transmissions to cover all the packets.
-     > 320ms + (10 * (2ms + 160ms)) + 80ms = *2.02s*
+   > A pattern seems to occur which is on the nth transmission, 2<sup>n-1</sup> packets can be sent. Expanding this: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 = over 1000 packets, so we're good there. We need to send 10 transmissions to cover all the packets.
+   > 320ms + (10 * (2ms + 160ms)) + 80ms = *2.02s*
 
 
 ### 8. (5pts) Determine the width of a bit on a 10 Gbps link. Assume a copper wire, where the speed of propagation is 2.3 ∗ 10<sup>8</sup> m/s.     
