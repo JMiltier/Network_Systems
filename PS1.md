@@ -22,21 +22,20 @@ Answers in normal font
   FDM - different frequencies over a common medium (like analog)
   When multiple signals are being transmitted, TDM uses different time slots, preventing any crosstalk from occurring. In FDM, crosstalk can occur since the signals are over different frequency slots, but still through a common link. This leads TDM to be more efficient than FDM, mainly due to no interferences.
 
-__3. (21pts) Consider two hosts, A and B, which are connected by a link (**R** bps). Suppose that the two hosts are separated by **m** meters, and the speed along with link is **s** meters/sec. Host A is to send a packet of size **L** bits to Host B.__  
-
-  **a. Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**  
+__3. (21pts) Consider two hosts, A and B, which are connected by a link (**R** bps). Suppose that the two hosts are separated by **m** meters, and the speed along with link is **s** meters/sec. Host A is to send a packet of size **L** bits to Host B.__   
+  **1. Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**  
     d<sub>prop</sub> = **m**/**s** (distance / speed; result measured in units of time)  
-  **b. Determine the transmission time of the packet, d<sub>trans</sub>, in terms of L and R.**  
+  **2. Determine the transmission time of the packet, d<sub>trans</sub>, in terms of L and R.**  
     d<sub>trans</sub> = **L**/**R**  (packet size / bit rate; result measured in units of time)       
-  **c. Ignoring processing and queuing delays, obtain an expression for the end-to-end delay (one-way delay from Host A to Host B).**  
+  **3. Ignoring processing and queuing delays, obtain an expression for the end-to-end delay (one-way delay from Host A to Host B).**  
     One-way delay = d<sub>trans</sub> + d<sub>prop</sub> (transmission time + propagation delay; result measured in units of time)  
-  **d. Suppose Host A begins to transmit the packet at time t = 0, At time t = d<sub>trans</sub>, where is the last bit of the packet?**
+  **4. Suppose Host A begins to transmit the packet at time t = 0, At time t = d<sub>trans</sub>, where is the last bit of the packet?**
     Since measuring in bps: when time is equal to d<sub>trans</sub>, the last bit of the packet would be leaving from Host A.  
-  **e. Suppose d<sub>prop</sub> is greater than d<sub>trans</sub>. At time t = d<sub>trans</sub>, where is the first bit of the packet?**
+  **5. Suppose d<sub>prop</sub> is greater than d<sub>trans</sub>. At time t = d<sub>trans</sub>, where is the first bit of the packet?**
     The transmission time is lesser than the propagation delay, so the first bit of the packet is somewhere in transmission still.  
-  **f. Suppose d<sub>prop</sub> is less than d<sub>trans</sub> . At time t = d<sub>trans</sub>, where is the first bit of the packet?**
+  **6. Suppose d<sub>prop</sub> is less than d<sub>trans</sub> . At time t = d<sub>trans</sub>, where is the first bit of the packet?**
     Contrary to the last question - since the transmission time is greater than the propagation delay, the first bit should have reached it's end host.  
-  **g. Suppose s = 2.5 * 10<sup>8</sup>, L = 120bits, and R = 56Kbps. Find the distance m so that d<sub>prop</sub> equals d<sub>trans</sub>.**   
+  **7. Suppose s = 2.5 * 10<sup>8</sup>, L = 120bits, and R = 56Kbps. Find the distance m so that d<sub>prop</sub> equals d<sub>trans</sub>.**   
     When d<sub>prop</sub> = d<sub>trans</sub>, what's the distance (m):  
     m / (2.5 * 10<sup>8</sup>m/s) = (120bits / 56Kbps)                    [move m to one side, and change units to match]  
     m = (120bits / 56 * 10<sup>3</sup>bps) * (2.5 * 10<sup>8</sup>m/s)    [subtract those powers]  
