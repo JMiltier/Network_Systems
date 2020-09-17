@@ -1,6 +1,5 @@
-### CSCI 4273, Problem Set 1  
-##### Josh Miltier
----
+## CSCI 4273, Problem Set 1  
+### Josh Miltier
 
 **Questions** are in **bold**  
 Answers in normal font  
@@ -25,19 +24,19 @@ Answers in normal font
 
 
 __3. (21pts) Consider two hosts, A and B, which are connected by a link (**R** bps). Suppose that the two hosts are separated by **m** meters, and the speed along with link is **s** meters/sec. Host A is to send a packet of size **L** bits to Host B.__  
-    **1. Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**  
+    **a. Express the propagation delay, d<sub>prop</sub>, in terms of m and s.**  
         d<sub>prop</sub> = **m**/**s** (distance / speed; result measured in units of time)  
-    **2. Determine the transmission time of the packet, d<sub>trans</sub>, in terms of L and R.**  
+    **b. Determine the transmission time of the packet, d<sub>trans</sub>, in terms of L and R.**  
         d<sub>trans</sub> = **L**/**R**  (packet size / bit rate; result measured in units of time)       
-    **3. Ignoring processing and queuing delays, obtain an expression for the end-to-end delay (one-way delay from Host A to Host B).**  
+    **c. Ignoring processing and queuing delays, obtain an expression for the end-to-end delay (one-way delay from Host A to Host B).**  
         One-way delay = d<sub>trans</sub> + d<sub>prop</sub> (transmission time + propagation delay; result measured in units of time)  
-    **4. Suppose Host A begins to transmit the packet at time t = 0, At time t = d<sub>trans</sub>, where is the last bit of the packet?**
+    **d. Suppose Host A begins to transmit the packet at time t = 0, At time t = d<sub>trans</sub>, where is the last bit of the packet?**
         Since measuring in bps: when time is equal to d<sub>trans</sub>, the last bit of the packet would be leaving from Host A.  
-    **5. Suppose d<sub>prop</sub> is greater than d<sub>trans</sub>. At time t = d<sub>trans</sub>, where is the first bit of the packet?**
+    **e. Suppose d<sub>prop</sub> is greater than d<sub>trans</sub>. At time t = d<sub>trans</sub>, where is the first bit of the packet?**
         The transmission time is lesser than the propagation delay, so the first bit of the packet is somewhere in transmission still.  
-    **6. Suppose d<sub>prop</sub> is less than d<sub>trans</sub> . At time t = d<sub>trans</sub>, where is the first bit of the packet?**
+    **f. Suppose d<sub>prop</sub> is less than d<sub>trans</sub> . At time t = d<sub>trans</sub>, where is the first bit of the packet?**
         Contrary to the last question - since the transmission time is greater than the propagation delay, the first bit should have reached it's end host.  
-    **7. Suppose s = 2.5 * 10<sup>8</sup>, L = 120bits, and R = 56Kbps. Find the distance m so that d<sub>prop</sub> equals d<sub>trans</sub>.**   
+    **g. Suppose s = 2.5 * 10<sup>8</sup>, L = 120bits, and R = 56Kbps. Find the distance m so that d<sub>prop</sub> equals d<sub>trans</sub>.**   
         When d<sub>prop</sub> = d<sub>trans</sub, what's the distance (m):  
         m / (2.5 * 10<sup>8</sup>m/s) = (120bits / 56Kbps)                    [move m to one side, and change units to match]  
         m = (120bits / 56 * 10<sup>3</sup>bps) * (2.5 * 10<sup>8</sup>m/s)    [subtract those powers]  
