@@ -38,4 +38,6 @@ Find IP of server: `ip addr`
   4. `ls`
   5. `exit`
   6. Any command not listed above will *echo*  
-    ![client echo](./sample_data/udp_client_echo.png)  ![server echo](./sample_data/udp_server_echo.png)
+    | Client| Server |  
+    | ----- | -----  |  
+    | ![client echo](./sample_data/udp_client_echo.png) | ![server echo](./sample_data/udp_server_echo.png) |  
