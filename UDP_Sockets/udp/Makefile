@@ -14,16 +14,16 @@ CC = gcc
 CFLAGS  = -w
 
 # the build target executable:
-CLIENT = udp_client
-SERVER = udp_server
+CLIENT = client/udp_client
+SERVER = server/udp_server
 
-all: $(CLIENT) $(SERVER)
+all: clean $(CLIENT) $(SERVER)
 
 $(CLIENT): $(CLIENT).c
 	$(CC) $(CFLAGS) -o $(CLIENT) $(CLIENT).c
 
 $(SERVER): $(SERVER).c
-	$(CC) $(CFLAGS) -o $(SERVER) $(SERVER).c
+	$(CC) $(CFLAGS)  -o $(SERVER) $(SERVER).c
 
 clean:
 	$(RM) $(CLIENT) $(SERVER)
