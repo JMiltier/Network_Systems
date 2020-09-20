@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
   char *hostaddrp; // dotted decimal host addr string
   int optval; // flag value for setsockopt
   int n; // message byte size
+  char cmd_in[10], filename_in[30]; // incoming command and filename
 
   // check command line arguments
   if (argc != 2) {
@@ -67,13 +68,21 @@ int main(int argc, char **argv) {
 
   // main loop: wait for a datagram, then echo it
   clientlen = sizeof(clientaddr);
+
+  // just to help clarify
+  system("clear"); // clean console when initiated :)
+  printf("Server listening on port %i.\n", portno);
+
   while (1) {
-    //?recvfrom: receive a UDP datagram from a client
+    // recvfrom: receive a UDP datagram from a client
     bzero(buf, BUFSIZE);
     n = recvfrom(sockfd, buf, BUFSIZE, 0,
 		 (struct sockaddr *) &clientaddr, &clientlen);
     if (n < 0)
       error("ERROR in recvfrom");
+
+    // format for server
+    sscanf(buf, "%s %s", cmd_in, filename_in);
 
     // gethostbyaddr: determine who sent the datagram
     hostp = gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,
@@ -81,16 +90,54 @@ int main(int argc, char **argv) {
     if (hostp == NULL)
       error("ERROR on gethostbyaddr");
     hostaddrp = inet_ntoa(clientaddr.sin_addr);
-    if (hostaddrp == NULL)
-      error("ERROR on inet_ntoa\n");
-    printf("server received datagram from %s (%s)\n",
-	   hostp->h_name, hostaddrp);
-    printf("server received %d/%d bytes: %s\n", strlen(buf), n, buf);
 
-    // sendto: echo the input back to the client
-    n = sendto(sockfd, buf, strlen(buf), 0,
-	       (struct sockaddr *) &clientaddr, clientlen);
-    if (n < 0)
-      error("ERROR in sendto");
+    /** get command handling **/
+    if (!strcmp(cmd_in,"get")) {
+      printf("get command\n");
+
+    /** put command handling **/
+    } else if (!strcmp(cmd_in,"put")) {
+      // first check if file exists
+
+    /** delete command handling **/
+    } else if (!strcmp(cmd_in,"delete")) {
+      printf("delete command\n");
+
+    /** ls command handling **/
+    } else if (!strcmp(cmd_in,"ls")) {
+      char file_entry[200];
+      file_entry[0] = '\0';
+
+      if(!sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *) &clientaddr, clientlen)) {
+        error("ls error");
+      }
+
+    /** exit command handling **/
+    } else if (!strcmp(cmd_in,"exit")) {
+      printf("Client @ %s exited.\n", hostaddrp);
+      // exit(0); // probably shouldn't allow from client side
+
+    /** trash command handling **/
+    } else {
+      // what to do?
+      continue;
+    }
+
+    // // gethostbyaddr: determine who sent the datagram
+    // hostp = gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,
+		// 	  sizeof(clientaddr.sin_addr.s_addr), AF_INET);
+    // if (hostp == NULL)
+    //   error("ERROR on gethostbyaddr");
+    // hostaddrp = inet_ntoa(clientaddr.sin_addr);
+    // if (hostaddrp == NULL)
+    //   error("ERROR on inet_ntoa\n");
+    // printf("server received datagram from %s (%s)\n", hostp->h_name, hostaddrp);
+    // printf("server received %d/%d bytes: %s\n", strlen(buf), n, buf);
+
+    // // sendto: echo the input back to the client
+    // n = sendto(sockfd, buf, strlen(buf), 0,
+	  //      (struct sockaddr *) &clientaddr, clientlen);
+    // if (n < 0)
+    //   error("ERROR in sendto");
   }
 }

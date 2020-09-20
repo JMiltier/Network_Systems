@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <unistd.h> // access
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
   struct hostent *server;
   char *hostname;
   char buf[BUFSIZE];
-  char line[40], cmd[10], filename[30];
+  char cmd[10], filename[30];
 
   // check command line arguments
   if (argc != 3) {
@@ -56,36 +56,73 @@ int main(int argc, char **argv) {
   (char *)&serveraddr.sin_addr.s_addr, server->h_length);
   serveraddr.sin_port = htons(portno);
 
+  system("clear"); // clean console when initiated :)
+
   while (1) {
     // make sure input strings are empty each time
-    line[0] = '\0';
+    buf[0] = '\0';
     cmd[0] = '\0';
     filename[0] = '\0';
 
+    // printf("Connected to server @ %s:%i\n\n", hostname, portno);
+
     // print command options
-    printf("\nPlease enter a command: \n  get <filename>\n"
-          "  put <filename>\n  delete <filename>\n  ls\n  exit\n\n> ");
-    scanf("%[^\n]%*c", line); // get line, ignoring the newline <enter>
-    sscanf(line, "%s %s", cmd, filename);
+    printf("Please enter a command:"
+           "\n  get <file_name>"
+           "\n  put <filename>"
+           "\n  delete <filename>"
+           "\n  ls"
+           "\n  exit"
+           "\n\n> ");
 
-    printf("--> %s %s", cmd, filename);
+    scanf(" %[^\n]%*c", buf); // get line, ignoring the newline <enter> and empty <enter>
+    sscanf(buf, "%s %s", cmd, filename);
+    system("clear"); // clean console :)
 
+    // send the message to the server
+    serverlen = sizeof(serveraddr);
+    n = sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+    if (n < 0)
+      error("ERROR in sendto");
+
+    /** get functionality **/
     if (!strcmp(cmd, "get")) {
 
-    } else if (!strcmp(cmd, "put")) {
 
+    /** put functionality **/
+    } else if (!strcmp(cmd, "put")) {
+      // first check if filename exists
+      if (access(filename, F_OK) != -1) {
+
+      } else {
+        printf("File '%s' does not exist.\n", filename);
+      }
+
+
+    /** delete functionality **/
     } else if (!strcmp(cmd, "delete")) {
 
-    } else if (!strcmp(cmd, "ls")) {
 
+    /** ls functionality **/
+    } else if (!strcmp(cmd, "ls")) {
+      filename[200];
+      serverlen = sizeof(serveraddr);
+      recvfrom(sockfd, filename, strlen(filename), 0, &serveraddr, &serverlen);
+      printf("files: %s\n", filename);
+
+    /** exit functionality **/
     } else if (!strcmp(cmd, "exit")) {
       printf("Goodbye!\n\n");
-      exit(EXIT_SUCCESS);
+      exit(0);
+
+    /** when user input doesn't match given commands **/
     } else {
-      line[40] = cmd + filename[30]; // concat, to also have a space (since concat() won't include the space)
-      printf("\n'%s' is not a valid command. Please try again.\n", line);
+      // concat, to also have a space (since concat() won't include the space)
+      buf[BUFSIZE] = cmd + filename[30];
+      printf("ERROR: '%s' is not a valid command. Please try again.\n\n", buf);
     }
   }
+
   // get a message from the user
   bzero(buf, BUFSIZE);
   printf("Please enter msg: ");
@@ -104,30 +141,3 @@ int main(int argc, char **argv) {
   printf("Echo from server: %s", buf);
   return 0;
 }
-
-
-
-/* CODE THAT DIDN'T WORK
-
-switch (cmd[0]) {
-      case 'g':
-        printf("\n%*c %*c is not a valid command. 1 Please try again.\n", cmd, filename);
-        break;
-      case 'p':
-        printf("\n%s %s is not a valid command. 2 Please try again.\n", cmd, filename);
-        break;
-      case 'd':
-        printf("\n%s %s is not a valid command. 3 Please try again.\n", cmd, filename);
-        break;
-      case 'l':
-        printf("\n%s %s is not a valid command. 4 Please try again.\n", cmd, filename);
-        break;
-      case 'e':
-        printf("Goodbye!");
-        exit(EXIT_SUCCESS);
-        break;
-      default:
-        printf("\n'%s %s' is not a valid command. Please try again.\n", cmd, filename);
-    }
-
-*/
