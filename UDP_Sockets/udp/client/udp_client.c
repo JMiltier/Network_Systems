@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
   struct hostent *server;
   char *hostname;
   char buf[BUFSIZE];
-  char cmd[10], filename[30];
+  char cmd[10], filename[30], ch;
 
   // check command line arguments
   if (argc != 3) {
@@ -97,22 +97,44 @@ int main(int argc, char **argv) {
 
     /******************************** put functionality ********************************/
     } else if (!strcmp(cmd, "put")) {
+      char data[BUFSIZE];
       // first, check if filename exists
       if (access(filename, F_OK) != -1) {
-        FILE *file = fopen(filename, "rb"); // open file to send
-        strncpy(filename, buf, 1);
+        // open file to send
+        FILE *file = fopen(filename, "rb");
+        fseek(file, 0L, SEEK_END);
+        // determine if file size is bigger than buffer size
+        long int file_size = ftell(file);
+        printf("filesize %i\n", file_size);
+        int packets = ceil(file_size / BUFSIZE);
+        printf("packets %i\n", packets);
+
+        fread(data, 1, BUFSIZE, file);
+        while ( (ch = fgetc(file)) != EOF) {
+          printf("char: %c\n", ch);
+        }
+
+
+        printf("copy %s\n", data);
         sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+        //   packet = fgetc(file);
+        //   // sendto(sockfd, packet, strlen(packet), 0, &serveraddr, serverlen);
+        //   printf("data %s\n", packet);
+        // }
+
+
+
         printf("File '%s' sent.\n", filename);
-        fclose(file);
       } else {
-        printf("File '%s' does not exist. Try again.\n", filename);
+        printf("Unable to send file. File '%s' does not exist. Try again.\n", filename);
       }
 
     /******************************** delete functionality ********************************/
     } else if (!strcmp(cmd, "delete")) {
-      int rcv = 0;
+      rcv = 0;
       sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
       recvfrom(sockfd, &(rcv), sizeof(rcv), 0, &serveraddr, &serverlen);
+
       if (rcv) {
         printf("File '%s' deleted\n", filename);
       } else {
@@ -121,9 +143,10 @@ int main(int argc, char **argv) {
 
     /******************************** ls functionality ********************************/
     } else if (!strcmp(cmd, "ls")) {
-      filename[200];
-      recvfrom(sockfd, filename, strlen(filename), 0, &serveraddr, &serverlen);
-      printf("files: %s\n", filename);
+      char file_list[BUFSIZE];
+      sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+      recvfrom(sockfd, file_list, sizeof(file_list), 0, &serveraddr, &serverlen);
+      printf("File list:\n%s\n", file_list);
 
     /******************************** exit functionality ********************************/
     } else if (!strcmp(cmd, "exit")) {

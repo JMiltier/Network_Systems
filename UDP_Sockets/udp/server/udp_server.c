@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <dirent.h> // for directory
 
 #define BUFSIZE 1024
 
@@ -117,6 +118,7 @@ int main(int argc, char **argv) {
     } else if (!strcmp(cmd_in, "delete")) {
       // first check if filename exists
       snd = 0;
+
       if (access(filename_in, F_OK) != -1) {
         snd = 1;
         remove(filename_in);
@@ -127,12 +129,18 @@ int main(int argc, char **argv) {
 
     /************************* ls command handling *************************/
     } else if (!strcmp(cmd_in, "ls")) {
-      char file_entry[200];
-      file_entry[0] = '\0';
-
-      if(!sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *) &clientaddr, clientlen)) {
-        error("ls error");
+      struct dirent **namelist;
+      n = scandir(".", &namelist, NULL, alphasort);
+      char file_list[BUFSIZE];
+      char files[BUFSIZE] = "";
+      while (n--) {
+        sprintf(file_list, "%s\n", namelist[n]->d_name);
+        free(namelist[n]);
+        strcat(files,file_list);
       }
+      free(namelist);
+
+      sendto(sockfd, files, BUFSIZE, 0, (struct sockaddr *) &clientaddr, clientlen);
 
     /************************* exit command handling *************************/
     } else if (!strcmp(cmd_in,"exit")) {
