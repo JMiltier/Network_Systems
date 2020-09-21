@@ -24,20 +24,19 @@ Find IP of server: `ip addr`
 
 #### Sending requests to server
   1. Create object executable files, listed under [CLI Commands](#cli-commands) above.
-  2. Open port on server to connect incoming traffic to `./udp_server <port>`
-  3. Connect to the server with  `./udp_client <server ip> <port>`
-  4. Enter message when prompted on the client
-  5. *Note: this can be run locally, using different ports for the server and client*
+  2. Open port on server to connect incoming traffic to `./udp_server <port>`.
+  3. Connect to the server with  `./udp_client <server ip> <port>`.
+  4. Enter command when prompted on the client.
+  5. *Note: this can be run locally, using different ports for the server and client.*
     ![server connection](./sample_data/udp_server_connection.png)  ![client connection](./sample_data/udp_client_connection.png)
 
 ## 📟 USE
 #### UDP User (client) Commands
-  1. `get <file_name>`
-  2. `put <file_name>`
-  3. `delete <file_name>`
-  4. `ls`
-  5. `exit`
-  6. Any command not listed above will *echo*
-      - Client:: ![client echo](./sample_data/udp_client_echo.png)
-      - Server:: ![server echo](./sample_data/udp_server_echo.png)
-
+  1. `get <file_name>` - copies specified *file_name* **from** the server
+  2. `put <file_name>` - copies specified *file_name* **to** the server
+  3. `delete <file_name>` - delete specified *file_name* from the server
+  4. `ls` - lists out all files in the current directory
+  5. `exit` - exits out of client console
+  6. Any command not listed above will loop back to available commands.
+      <!-- - Client:: ![client echo](./sample_data/udp_client_echo.png)
+      - Server:: ![server echo](./sample_data/udp_server_echo.png) -->

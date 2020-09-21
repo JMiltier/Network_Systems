@@ -1,6 +1,7 @@
 /* ***********************************
  * udp_server.c - A simple UDP echo server
  * usage: ./udp_server <port>
+ * Program by Josh Miltier
  *********************************** */
 
 #include <stdio.h>
@@ -104,10 +105,22 @@ int main(int argc, char **argv) {
       login = 1;
     }
 
-
     /************************* get command handling *************************/
     if (!strcmp(cmd_in, "get")) {
-      printf("get command\n");
+      char data[BUFSIZE];
+
+      if (access(filename_in, F_OK) != -1) {
+        // open file to send
+        FILE *file = fopen(filename_in, "rb");
+        fseek(file, 0L, SEEK_END);
+        // determine if file size is bigger than buffer size
+        long int file_size = ftell(file);
+
+        fread(data, 1, BUFSIZE, file);
+        sendto(sockfd, filename_in, strlen(filename_in), 0, (struct sockaddr *) &clientaddr, clientlen);
+      } else {
+        sendto(sockfd, &(snd), strlen(filename_in), 0, (struct sockaddr *) &clientaddr, clientlen);
+      }
 
     /************************* put command handling *************************/
     } else if (!strcmp(cmd_in, "put")) {
@@ -133,10 +146,12 @@ int main(int argc, char **argv) {
       n = scandir(".", &namelist, NULL, alphasort);
       char file_list[BUFSIZE];
       char files[BUFSIZE] = "";
-      while (n--) {
-        sprintf(file_list, "%s\n", namelist[n]->d_name);
-        free(namelist[n]);
+      int i = 0;
+      while (i < n) {
+        sprintf(file_list, "%s\n", namelist[i]->d_name);
+        free(namelist[i]);
         strcat(files, file_list);
+        i++;
       }
       free(namelist);
 

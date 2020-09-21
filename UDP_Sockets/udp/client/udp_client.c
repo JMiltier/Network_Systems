@@ -1,6 +1,7 @@
 /* ***********************************
  * udp_client.c - A simple UDP client
  * usage: ./udp_client <host> <port>
+ * Program by Josh Miltier
  *********************************** */
 
 #include <stdio.h>
@@ -93,6 +94,20 @@ int main(int argc, char **argv) {
 
     /******************************** get functionality ********************************/
     if (!strcmp(cmd, "get")) {
+      char fn[BUFSIZE];
+
+      sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+      recvfrom(sockfd, &(fn), sizeof(fn), 0, &serveraddr, &serverlen);
+
+      // file is on server
+      if (!strcmp(fn, filename)){
+        FILE *file = fopen(fn, "wb");
+        fwrite(&file, 1, sizeof(file), file);
+        printf("File '%s' copied in.\n", filename);
+
+      // file does not exist on server
+      } else printf("Unable to get file '%s'. Try again.\n", filename);
+
 
 
     /******************************** put functionality ********************************/
@@ -102,27 +117,16 @@ int main(int argc, char **argv) {
       if (access(filename, F_OK) != -1) {
         // open file to send
         FILE *file = fopen(filename, "rb");
-        fseek(file, 0L, SEEK_END);
+        // fseek(file, 0L, SEEK_END);
         // determine if file size is bigger than buffer size
-        long int file_size = ftell(file);
-        printf("filesize %i\n", file_size);
-        int packets = ceil(file_size / BUFSIZE);
-        printf("packets %i\n", packets);
+        // long int file_size = ftell(file);
+        // printf("filesize %i\n", file_size);
+        // int packets = ceil(file_size / BUFSIZE);
+        // printf("packets %i\n", packets);
+        // fread(data, 1, BUFSIZE, file);
 
-        fread(data, 1, BUFSIZE, file);
-        while ( (ch = fgetc(file)) != EOF) {
-          printf("char: %c\n", ch);
-        }
-
-
-        printf("copy %s\n", data);
+        // printf("data %s\n", data);
         sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
-        //   packet = fgetc(file);
-        //   // sendto(sockfd, packet, strlen(packet), 0, &serveraddr, serverlen);
-        //   printf("data %s\n", packet);
-        // }
-
-
 
         printf("File '%s' sent.\n", filename);
       } else {
@@ -162,21 +166,21 @@ int main(int argc, char **argv) {
     }
   }
 
-  // get a message from the user
-  bzero(buf, BUFSIZE);
-  printf("Please enter msg: ");
-  fgets(buf, BUFSIZE, stdin);
+  // // get a message from the user
+  // bzero(buf, BUFSIZE);
+  // printf("Please enter msg: ");
+  // fgets(buf, BUFSIZE, stdin);
 
-  // send the message to the server
-  serverlen = sizeof(serveraddr);
-  n = sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
-  if (n < 0)
-    error("ERROR in sendto");
+  // // send the message to the server
+  // serverlen = sizeof(serveraddr);
+  // n = sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+  // if (n < 0)
+  //   error("ERROR in sendto");
 
-  // print the server's reply
-  n = recvfrom(sockfd, buf, strlen(buf), 0, &serveraddr, &serverlen);
-  if (n < 0)
-    error("ERROR in recvfrom");
-  printf("Echo from server: %s", buf);
-  return 0;
+  // // print the server's reply
+  // n = recvfrom(sockfd, buf, strlen(buf), 0, &serveraddr, &serverlen);
+  // if (n < 0)
+  //   error("ERROR in recvfrom");
+  // printf("Echo from server: %s", buf);
+  // return 0;
 }
