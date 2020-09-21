@@ -21,7 +21,7 @@ void error(char *msg) {
 }
 
 int main(int argc, char **argv) {
-  int sockfd, portno, n;
+  int sockfd, portno, n, rcv;
   int serverlen;
   struct sockaddr_in serveraddr;
   struct hostent *server;
@@ -58,6 +58,12 @@ int main(int argc, char **argv) {
 
   system("clear"); // clean console when initiated :)
 
+   // send the message to the server once connected
+  serverlen = sizeof(serveraddr);
+  n = sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+  if (n < 0)
+    error("ERROR in sendto");
+
   while (1) {
     // make sure input strings are empty each time
     buf[0] = '\0';
@@ -81,41 +87,51 @@ int main(int argc, char **argv) {
 
     // send the message to the server
     serverlen = sizeof(serveraddr);
-    n = sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
-    if (n < 0)
-      error("ERROR in sendto");
+    // n = sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+    // if (n < 0)
+    //   error("ERROR in sendto");
 
-    /** get functionality **/
+    /******************************** get functionality ********************************/
     if (!strcmp(cmd, "get")) {
 
 
-    /** put functionality **/
+    /******************************** put functionality ********************************/
     } else if (!strcmp(cmd, "put")) {
-      // first check if filename exists
+      // first, check if filename exists
       if (access(filename, F_OK) != -1) {
-
+        FILE *file = fopen(filename, "rb"); // open file to send
+        strncpy(filename, buf, 1);
+        sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+        printf("File '%s' sent.\n", filename);
+        fclose(file);
       } else {
-        printf("File '%s' does not exist.\n", filename);
+        printf("File '%s' does not exist. Try again.\n", filename);
       }
 
-
-    /** delete functionality **/
+    /******************************** delete functionality ********************************/
     } else if (!strcmp(cmd, "delete")) {
+      int rcv = 0;
+      sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+      recvfrom(sockfd, &(rcv), sizeof(rcv), 0, &serveraddr, &serverlen);
+      if (rcv) {
+        printf("File '%s' deleted\n", filename);
+      } else {
+        printf("Unable to delete '%s' from server.\n", filename);
+      }
 
-
-    /** ls functionality **/
+    /******************************** ls functionality ********************************/
     } else if (!strcmp(cmd, "ls")) {
       filename[200];
-      serverlen = sizeof(serveraddr);
       recvfrom(sockfd, filename, strlen(filename), 0, &serveraddr, &serverlen);
       printf("files: %s\n", filename);
 
-    /** exit functionality **/
+    /******************************** exit functionality ********************************/
     } else if (!strcmp(cmd, "exit")) {
+      sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
       printf("Goodbye!\n\n");
       exit(0);
 
-    /** when user input doesn't match given commands **/
+    /************************* when user input doesn't match given commands *************************/
     } else {
       // concat, to also have a space (since concat() won't include the space)
       buf[BUFSIZE] = cmd + filename[30];

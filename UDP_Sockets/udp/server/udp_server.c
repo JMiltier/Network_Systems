@@ -31,8 +31,9 @@ int main(int argc, char **argv) {
   char buf[BUFSIZE]; // message buf
   char *hostaddrp; // dotted decimal host addr string
   int optval; // flag value for setsockopt
-  int n; // message byte size
+  int n, snd; // message byte size
   char cmd_in[10], filename_in[30]; // incoming command and filename
+  int login = 0; // login tracker
 
   // check command line arguments
   if (argc != 2) {
@@ -74,6 +75,11 @@ int main(int argc, char **argv) {
   printf("Server listening on port %i.\n", portno);
 
   while (1) {
+    // make sure input strings are empty each time
+    buf[0] = '\0';
+    cmd_in[0] = '\0';
+    filename_in[0] = '\0';
+
     // recvfrom: receive a UDP datagram from a client
     bzero(buf, BUFSIZE);
     n = recvfrom(sockfd, buf, BUFSIZE, 0,
@@ -91,20 +97,36 @@ int main(int argc, char **argv) {
       error("ERROR on gethostbyaddr");
     hostaddrp = inet_ntoa(clientaddr.sin_addr);
 
-    /** get command handling **/
-    if (!strcmp(cmd_in,"get")) {
+    // see who is logged in
+    if (!login) {
+      printf("Client @ %s joined.\n", hostaddrp);
+      login = 1;
+    }
+
+
+    /************************* get command handling *************************/
+    if (!strcmp(cmd_in, "get")) {
       printf("get command\n");
 
-    /** put command handling **/
-    } else if (!strcmp(cmd_in,"put")) {
-      // first check if file exists
+    /************************* put command handling *************************/
+    } else if (!strcmp(cmd_in, "put")) {
+      FILE *file = fopen(filename_in, "wb");
+      fwrite(&file, 1, sizeof(file), file);
 
-    /** delete command handling **/
-    } else if (!strcmp(cmd_in,"delete")) {
-      printf("delete command\n");
+    /************************* delete command handling *************************/
+    } else if (!strcmp(cmd_in, "delete")) {
+      // first check if filename exists
+      snd = 0;
+      if (access(filename_in, F_OK) != -1) {
+        snd = 1;
+        remove(filename_in);
+        sendto(sockfd, &(snd), sizeof(snd), 0, (struct sockaddr *) &clientaddr, clientlen);
+      } else {
+        sendto(sockfd, &(snd), sizeof(snd), 0, (struct sockaddr *) &clientaddr, clientlen);
+      }
 
-    /** ls command handling **/
-    } else if (!strcmp(cmd_in,"ls")) {
+    /************************* ls command handling *************************/
+    } else if (!strcmp(cmd_in, "ls")) {
       char file_entry[200];
       file_entry[0] = '\0';
 
@@ -112,12 +134,13 @@ int main(int argc, char **argv) {
         error("ls error");
       }
 
-    /** exit command handling **/
+    /************************* exit command handling *************************/
     } else if (!strcmp(cmd_in,"exit")) {
       printf("Client @ %s exited.\n", hostaddrp);
+      login = 0;
       // exit(0); // probably shouldn't allow from client side
 
-    /** trash command handling **/
+    /************************* trash command handling *************************/
     } else {
       // what to do?
       continue;
