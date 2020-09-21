@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
       while (n--) {
         sprintf(file_list, "%s\n", namelist[n]->d_name);
         free(namelist[n]);
-        strcat(files,file_list);
+        strcat(files, file_list);
       }
       free(namelist);
 

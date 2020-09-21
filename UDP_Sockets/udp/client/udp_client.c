@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
       char file_list[BUFSIZE];
       sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
       recvfrom(sockfd, file_list, sizeof(file_list), 0, &serveraddr, &serverlen);
-      printf("File list:\n%s\n", file_list);
+      printf("%s\n", file_list);
 
     /******************************** exit functionality ********************************/
     } else if (!strcmp(cmd, "exit")) {
