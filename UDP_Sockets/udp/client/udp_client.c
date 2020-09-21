@@ -100,15 +100,14 @@ int main(int argc, char **argv) {
       recvfrom(sockfd, &(fn), sizeof(fn), 0, &serveraddr, &serverlen);
 
       // file is on server
-      if (!strcmp(fn, filename)){
-        FILE *file = fopen(fn, "wb");
-        fwrite(&file, 1, sizeof(file), file);
-        printf("File '%s' copied in.\n", filename);
+      if (fn[0] != '\0'){
+      FILE *file = fopen(filename, "wb");
+      fwrite(fn, 1, strlen(fn), file);
+      printf("File '%s' copied in.\n", filename);
+      fclose(file);
 
       // file does not exist on server
       } else printf("Unable to get file '%s'. Try again.\n", filename);
-
-
 
     /******************************** put functionality ********************************/
     } else if (!strcmp(cmd, "put")) {
@@ -127,7 +126,7 @@ int main(int argc, char **argv) {
 
         // printf("data %s\n", data);
         sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
-
+        fclose(file);
         printf("File '%s' sent.\n", filename);
       } else {
         printf("Unable to send file. File '%s' does not exist. Try again.\n", filename);

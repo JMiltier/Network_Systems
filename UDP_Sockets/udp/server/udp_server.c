@@ -113,19 +113,22 @@ int main(int argc, char **argv) {
         // open file to send
         FILE *file = fopen(filename_in, "rb");
         fseek(file, 0L, SEEK_END);
-        // determine if file size is bigger than buffer size
         long int file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
 
-        fread(data, 1, BUFSIZE, file);
-        sendto(sockfd, filename_in, strlen(filename_in), 0, (struct sockaddr *) &clientaddr, clientlen);
+        fread(data, strlen(file)+1, file_size, file);
+        fclose(file);
+        sendto(sockfd, &(data), file_size, 0, (struct sockaddr *) &clientaddr, clientlen);
       } else {
-        sendto(sockfd, &(snd), strlen(filename_in), 0, (struct sockaddr *) &clientaddr, clientlen);
+        data[0] = '\0';
+        sendto(sockfd, &(data), 0, 0, (struct sockaddr *) &clientaddr, clientlen);
       }
 
     /************************* put command handling *************************/
     } else if (!strcmp(cmd_in, "put")) {
       FILE *file = fopen(filename_in, "wb");
       fwrite(&file, 1, sizeof(file), file);
+      fclose(file);
 
     /************************* delete command handling *************************/
     } else if (!strcmp(cmd_in, "delete")) {
@@ -146,7 +149,7 @@ int main(int argc, char **argv) {
       n = scandir(".", &namelist, NULL, alphasort);
       char file_list[BUFSIZE];
       char files[BUFSIZE] = "";
-      int i = 0;
+      int i = 2;
       while (i < n) {
         sprintf(file_list, "%s\n", namelist[i]->d_name);
         free(namelist[i]);

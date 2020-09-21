@@ -23,7 +23,7 @@ $(CLIENT): $(CLIENT).c
 	$(CC) $(CFLAGS) -o $(CLIENT) $(CLIENT).c
 
 $(SERVER): $(SERVER).c
-	$(CC) $(CFLAGS)  -o $(SERVER) $(SERVER).c
+	$(CC) $(CFLAGS) -o $(SERVER) $(SERVER).c
 
 clean:
 	$(RM) $(CLIENT) $(SERVER)
