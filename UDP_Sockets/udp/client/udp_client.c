@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
         // printf("filesize %i\n", file_size);
         // int packets = ceil(file_size / BUFSIZE);
         // printf("packets %i\n", packets);
-        // fread(data, 1, BUFSIZE, file);
+        fread(data, strlen(file)+1, BUFSIZE, file);
 
         // printf("data %s\n", data);
         sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);

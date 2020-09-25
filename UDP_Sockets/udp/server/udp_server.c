@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
     /************************* put command handling *************************/
     } else if (!strcmp(cmd_in, "put")) {
       FILE *file = fopen(filename_in, "wb");
-      fwrite(&file, 1, sizeof(file), file);
+      fwrite(&file, 1, strlen(file), file);
       fclose(file);
 
     /************************* delete command handling *************************/
