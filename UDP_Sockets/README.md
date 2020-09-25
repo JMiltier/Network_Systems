@@ -26,7 +26,7 @@ Find IP of server: `ip addr`
 ```shell
 scp -r <local_folder_location> <IDENTIKEY>@elra-##.cs.colorado.edu:<folder location>
 # Example:
-scp -r local/usr/UDP_Sockets/udp name@elra-02.cs.colorado.edu:udp_sockets
+scp -r ./UDP_Sockets/udp name@elra-02.cs.colorado.edu:./udp_sockets
 ```
 
 #### Sending requests to server
