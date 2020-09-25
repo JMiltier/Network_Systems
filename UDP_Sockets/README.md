@@ -17,7 +17,7 @@ The **client** executable file takes two command line arguments. The first is th
       `gcc udp_server.c -o udp_server`
       *OR* run [makefile](#makefile) commands (details in section above)
 
-#### Connect to one of CUB's elra servers:
+#### Connect to one of CUB's educational labs remote access servers:
 SSH into Linux VM: `ssh <IDENTIKEY>@elra-##.cs.colorado.edu`, ## can be 01, 02, 03, or 04
 *Password* is same as IDENTIKEYs
 Find IP of server: `ip addr`
