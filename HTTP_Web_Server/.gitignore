@@ -1,5 +1,8 @@
 # mac
 .DS_Store
 
-# PDFs
+# ignore any generated dummy code, txt, tar, gz, or pdf files
 *.pdf
+*.tar
+*.gz
+*.txt
