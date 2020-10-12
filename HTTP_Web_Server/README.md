@@ -12,7 +12,7 @@ A *C and Python Language* based program that sends TCP commands/requests to an H
 
 ## 📟 USE
 #### HTTP User (client) Commands
-The request consists of three parts:
+The request consists of three parts (separated by spaces):
 1. method (GET, POST, HEAD)
 2. URL (directory)
 3. HTTP version
