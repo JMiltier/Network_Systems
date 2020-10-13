@@ -15,5 +15,5 @@ A *C and Python Language* based program that sends TCP commands/requests to an H
 The request consists of three parts (separated by spaces):
 1. method (GET, POST, HEAD)
 2. URL (directory)
-3. HTTP version
+3. HTTP version (1)
 Example: `GET /Protocols/rfc1945/rfc1945 HTTP/1.1`
