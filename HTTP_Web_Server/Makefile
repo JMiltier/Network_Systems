@@ -23,7 +23,7 @@ name= "Josh Miltier"
 
 .PHONY: clean all
 
-$(WEBSVR): $(WEBSVRSRC)
+$(WEBSVR): clean $(WEBSVRSRC)
 	$(CC) $(CFGLAGS) $(WEBSVRSRC) -o $(WEBSVR)
 
 $(ECHSVR): $(ECHSVRSRC)
