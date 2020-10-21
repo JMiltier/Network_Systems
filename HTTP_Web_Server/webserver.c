@@ -12,145 +12,142 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <fcntl.h> // for open
+#include <fcntl.h> 			/* for open */
+#include <sys/types.h>  /* for open (UNIX)*/
+#include <sys/stat.h>		/* for open (UNIX)*/
 #include <pthread.h>
-#include <signal.h> // to gracefully stop
+#include <signal.h> 		/* to gracefully stop */
 #include <limits.h>
 
 #define MAXLINE 8192 /* max text line length */
 #define MAXBUF 8192	 /* max I/O buffer size */
 #define LISTENQ 1024 /* second argument to listen() */
-#define TYPELENGTH 8
+#define TYPELENGTH 7
 #define WWW_SERVER_PATH "/www"
+
+volatile sig_atomic_t done = 0;
 
 int open_listenfd(int port);
 void echo(int connfd);
 void *thread(void *vargp);
 char *fileType(char *filename);
+void error500(char buf[MAXLINE], int connfd);
 char *contentType(char *ext);
-void inthand(int signum);
+void term(int signum);
 void server_res(int n);
 char *getcwd(char *buf, size_t size);
 
-char *file_types[TYPELENGTH] = {"html", "txt", "png", "gif", "jpg", "css", "js", "ico"};
+char *file_types[TYPELENGTH] = {"html", "txt", "png", "gif", "jpg", "css", "js"};
 char *content_types[TYPELENGTH] = {"text/html", "text/plain", "image/png", "image/gif",
-																	 "image/jpg", "text/css", "application/javascript", "image/x-icon"};
+																	 "image/jpg", "text/css", "application/javascript"};
 
+/*
+ * main driver
+ */
 int main(int argc, char **argv) {
 	int listenfd, *connfdp, port;
 	struct sockaddr_in clientaddr;
 	socklen_t clientlen;
 	pthread_t tid;
 
+	// check arguments
 	if (argc != 2) {
 		fprintf(stderr, "usage: %s <port>\n", argv[0]);
 		exit(0);
 	}
 	port = atoi(argv[1]);
 
+	// gracefully exit
+	struct sigaction action;
+	memset(&action, 0, sizeof(struct sigaction));
+	action.sa_handler = term;
+	sigaction(SIGINT, &action, NULL);
+	printf("Escape character is 'Ctrl+C'\n");
+
 	// continuous listening of server
 	listenfd = open_listenfd(port);
-	while (1) {
+	while (!done) {
 		connfdp = malloc(sizeof(int));
 		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
 		pthread_create(&tid, NULL, thread, connfdp);
 	}
 }
 
+/*
+ * requests send to server & server's response
+ */
 void server_res(int connfd) {
 	size_t n;
 	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3];
+	int filedesc;
 
 	// set working directory
 	char cwd[MAXLINE];
 	getcwd(cwd, sizeof(cwd));
 	strcat(cwd, WWW_SERVER_PATH);
 
-	int request, fd, bytes_read;
-
-	memset((void *)httpmsg, (int)'\0', MAXLINE);
-
-	if (recv(connfd, httpmsg, MAXLINE, 0) > 0) {
-		http_request[0] = strtok(httpmsg, " \t\n");
-		http_request[1] = strtok(NULL, " \t");
-		http_request[2] = strtok(NULL, " \t\n");
-
-		// root directory if nothing else specified for localhost:<port>
-		if (strncmp(http_request[1], "/\0", 2) == 0)
-			http_request[1] = "/index.html";
-
-				int type_found = 0;
-				for (int i = 0; i < TYPELENGTH; i++)
-				{
-					if (strcmp(file_types[i], fileType(http_request[1])) == 0)
-					{
-						type_found = 1;
-						break;
-					}
-				}
-
-				strcpy(buf, cwd);
-				strcpy(&buf[strlen(cwd)], http_request[1]); //creating an absolute filepath
-
-				/* 400 Error */
-				if (strlen(buf) > 255) {
-					printf("MADE IT HERE! BAD\n");
-					char *invalid_uri_str;
-					invalid_uri_str = malloc(80);
-					strcpy(invalid_uri_str, "HTTP/1.1 400 Bad Request: Invalid URI: ");
-					strcat(invalid_uri_str, buf);
-					strcat(invalid_uri_str, "\n");
-
-					int invalid_uri_strlen = strlen(invalid_uri_str);
-					write(connfd, invalid_uri_str, invalid_uri_strlen);
-					//free(invalid_uri_str);
-				} else {
-					if ((fd = open(buf, O_RDONLY)) != -1) {
-						char *content_type_header;
-						content_type_header = malloc(50);
-						strcpy(content_type_header, "Content-Type: ");
-						strcat(content_type_header, contentType(fileType(http_request[1])));
-						strcat(content_type_header, "\n");
-						int content_type_header_len = strlen(content_type_header);
-
-						int fsize = lseek(fd, 0, SEEK_END);
-						lseek(fd, 0, SEEK_SET);
-						char fsize_str[20];
-						sprintf(fsize_str, "%d", fsize);
-						char *content_length_header;
-						content_length_header = malloc(50);
-						strcpy(content_length_header, "Content-Length: ");
-						strcat(content_length_header, fsize_str);
-						strcat(content_length_header, "\n");
-						int content_length_header_len = strlen(content_length_header);
-
-						send(connfd, "HTTP/1.1 200 OK\n", 16, 0);
-						send(connfd, content_type_header, content_type_header_len, 0);
-						send(connfd, content_length_header, content_length_header_len, 0);
-						send(connfd, "Connection: keep-alive\n\n", 24, 0);
-						while ((bytes_read = read(fd, buf, MAXBUF)) > 0)
-							write(connfd, buf, bytes_read);
-					}
-
-					/* 404 Error */
-					else {
-						printf("MADE IT HERE! BAD\n");
-						char *not_found_str;
-						not_found_str = malloc(80);
-						strcpy(not_found_str, "HTTP/1.1 404 Not Found: ");
-						strcat(not_found_str, buf);
-						strcat(not_found_str, "\n");
-
-						int not_found_strlen = strlen(not_found_str);
-						write(connfd, not_found_str, not_found_strlen);
-					}
-
-		}
+	// idle response
+	if (recv(connfd, httpmsg, MAXLINE, 0) == 0) {
+		printf("Connection has idled at %s. Refresh page to continue.\n");
 	}
 
-	shutdown(connfd, SHUT_RDWR);
+	// connected
+	if (recv(connfd, httpmsg, MAXLINE, 0) > 0) {
+		http_request[0] = strtok(httpmsg, " \t\n");
+		if (strncmp(http_request[0], "GET\0", 4) == 0) {
+			http_request[1] = strtok(NULL, " \t");
+			http_request[2] = strtok(NULL, " \t\n");
+
+			// default landing page/route, no file requested
+			if (strncmp(http_request[1], "/\0", 2) == 0)
+				http_request[1] = "/index.html";
+
+			// make sure incoming file types are supported
+			int valid = 1;
+			for (int i = 0; i < TYPELENGTH; i++)
+				if (strcmp(file_types[i], fileType(http_request[1])) == 0) {
+					valid = 0;
+					break;
+				}
+			if (valid) error500(buf, connfd);
+
+			// get directory of file, with request URI
+			strcpy(buf, cwd);
+			strcpy(&buf[strlen(cwd)], http_request[1]);
+
+			// system call, open file and read in descriptor
+			if ((filedesc = open(buf, 0)) != -1) {
+				// get content type for the header
+				char *content_type = malloc(50);
+				strcpy(content_type, "Content-Type:");
+				strcat(content_type, contentType(fileType(http_request[1])));
+				strcat(content_type, "\r\n");
+
+				// set content length for the header
+				int fsize = lseek(filedesc, 0, SEEK_END);
+				lseek(filedesc, 0, SEEK_SET);
+				char fsize_str[20];
+				sprintf(fsize_str, "%d", fsize);
+				char *content_length = malloc(50);
+				strcpy(content_length, "Content-Length:");
+				strcat(content_length, fsize_str);
+				strcat(content_length, "\r\n");
+
+				// send response
+				send(connfd, "HTTP/1.1 200 Document Follows\r\n", 31, 0);
+				send(connfd, content_type, strlen(content_type), 0);
+				send(connfd, content_length, strlen(content_length), 0);
+				send(connfd, "Connection: Keep-alive\r\n\r\n", 26, 0);
+				while ((n = read(filedesc, buf, MAXBUF)) > 0)
+					write(connfd, buf, n);
+
+/** If any cases fail above, respond with Error 500 **/
+			} else error500(buf, connfd);
+		} else error500(buf, connfd);
+	} else error500(buf, connfd);
+
+	shutdown(connfd, 0);
 	close(connfd);
-	connfd = -1;
 }
 
 /* thread routine */
@@ -204,15 +201,21 @@ char *fileType(char *file) {
 	else return ext + 1;
 }
 
+/* Error 500 Internal Server Error handling */
+void error500(char buf[MAXLINE], int connfd) {
+	strcpy(buf, "HTTP/1.1 500 Internal Server Error");
+	strcat(buf, "\n");
+	write(connfd, buf, strlen(buf));
+}
+
+void term(int signum){
+	done = 1;
+}
+
 /* looking at the extension, and return supported content type*/
-char *contentType(char *ext)
-{
+char *contentType(char *ext) {
 	for (int i = 0; i < TYPELENGTH; i++)
-	{
 		if (strcmp(ext, file_types[i]) == 0)
-		{
 			return content_types[i];
-		}
-	}
 	return "";
 }
