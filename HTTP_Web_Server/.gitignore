@@ -5,7 +5,7 @@
 *.pdf
 *.tar
 *.gz
-*.txt
+*.zip
 
 # make files
 echoserver
