@@ -18,6 +18,7 @@
 #include <pthread.h>
 #include <signal.h> 		/* to gracefully stop */
 #include <limits.h>
+#include <time.h> 			/* for time keeping */
 
 #define MAXLINE 8192 /* max text line length */
 #define MAXBUF 8192	 /* max I/O buffer size */
@@ -62,13 +63,14 @@ int main(int argc, char **argv) {
 	memset(&action, 0, sizeof(struct sigaction));
 	action.sa_handler = term;
 	sigaction(SIGINT, &action, NULL);
-	printf("Escape character is 'Ctrl+C'\n");
+	printf("Graceful exit: escape character is 'Ctrl+C'.\n");
 
 	// continuous listening of server
 	listenfd = open_listenfd(port);
 	while (!done) {
 		connfdp = malloc(sizeof(int));
 		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
 		pthread_create(&tid, NULL, thread, connfdp);
 	}
 }
@@ -86,13 +88,20 @@ void server_res(int connfd) {
 	getcwd(cwd, sizeof(cwd));
 	strcat(cwd, WWW_SERVER_PATH);
 
+	// receive message from socket
+	int socket_msg = recv(connfd, httpmsg, MAXLINE, 0);
+
 	// idle response
-	if (recv(connfd, httpmsg, MAXLINE, 0) == 0) {
-		printf("Connection has idled at %s. Refresh page to continue.\n");
+	time_t rawtime;
+	struct tm * timeinfo;
+	time ( &rawtime );
+  timeinfo = localtime ( &rawtime );
+	if (socket_msg == 0) {
+		printf("Connection has idled at %s. Refresh page to continue.\n", asctime (timeinfo));
 	}
 
 	// connected
-	if (recv(connfd, httpmsg, MAXLINE, 0) > 0) {
+	else if (socket_msg > 0) {
 		http_request[0] = strtok(httpmsg, " \t\n");
 		if (strncmp(http_request[0], "GET\0", 4) == 0) {
 			http_request[1] = strtok(NULL, " \t");
@@ -118,7 +127,7 @@ void server_res(int connfd) {
 			// system call, open file and read in descriptor
 			if ((filedesc = open(buf, 0)) != -1) {
 				// get content type for the header
-				char *content_type = malloc(50);
+				char *content_type = malloc(100);
 				strcpy(content_type, "Content-Type:");
 				strcat(content_type, contentType(fileType(http_request[1])));
 				strcat(content_type, "\r\n");
@@ -128,7 +137,7 @@ void server_res(int connfd) {
 				lseek(filedesc, 0, SEEK_SET);
 				char fsize_str[20];
 				sprintf(fsize_str, "%d", fsize);
-				char *content_length = malloc(50);
+				char *content_length = malloc(100);
 				strcpy(content_length, "Content-Length:");
 				strcat(content_length, fsize_str);
 				strcat(content_length, "\r\n");

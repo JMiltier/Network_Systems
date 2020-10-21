@@ -26,5 +26,10 @@ Example: `GET /Protocols/rfc1945/rfc1945 HTTP/1.1`
   Once webserver objet is created, run `./webserver <PORT>` in the terminal/console from the root directory of the executable file. Next, go to a web-browser and go to `localhost:<PORT>`. This will direct to the default index.html page, where links can be requested and transferred from the server.  
 
 #### Resources
-1. [System Calls](http://codewiki.wikidot.com/c:system-calls:open)
-2. [Graceful Exits](https://www.systutorials.com/catching-the-signal-sent-by-kill-in-c-on-linux/)
+1. [Socket - accept](https://man7.org/linux/man-pages/man2/accept.2.html)
+2. [System Calls](http://codewiki.wikidot.com/c:system-calls:open)
+3. [Graceful Exits](https://www.systutorials.com/catching-the-signal-sent-by-kill-in-c-on-linux/)
+4. [TCP echo client and server with fork()](http://www.cs.dartmouth.edu/~campbell/cs50/socketprogramming.html)
+5. [TCP echo client and server with threads](TCP echo client and server
+with threads.)
+6. [Echo server-client code with threads](http://www.csc.villanova.edu/~mdamian/sockets/echoC.htm)
