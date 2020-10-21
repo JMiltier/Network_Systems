@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
 void server_res(int connfd) {
 	size_t n;
 	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3];
-	int filedesc;
+	int filedesc, socket_msg;
 
 	// set working directory
 	char cwd[MAXLINE];
@@ -89,7 +89,7 @@ void server_res(int connfd) {
 	strcat(cwd, WWW_SERVER_PATH);
 
 	// receive message from socket
-	int socket_msg = recv(connfd, httpmsg, MAXLINE, 0);
+	socket_msg = recv(connfd, httpmsg, MAXLINE, 0);
 
 	// idle response
 	time_t rawtime;
