@@ -31,9 +31,7 @@ volatile sig_atomic_t done = 0;
 int open_listenfd(int port);
 void echo(int connfd);
 void *thread(void *vargp);
-char *fileType(char *filename);
 void error500(char buf[MAXLINE], int connfd);
-char *contentType(char *ext);
 void term(int signum);
 void server_res(int n);
 char *getcwd(char *buf, size_t size);
@@ -80,8 +78,9 @@ int main(int argc, char **argv) {
  */
 void server_res(int connfd) {
 	size_t n;
-	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3];
-	int filedesc, socket_msg;
+	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3], *filetype;
+	int filedesc, socket_msg, filesize, filetype_index;
+	FILE file;
 
 	// set working directory
 	char cwd[MAXLINE];
@@ -111,14 +110,17 @@ void server_res(int connfd) {
 			if (strncmp(http_request[1], "/\0", 2) == 0)
 				http_request[1] = "/index.html";
 
+			// for specific files, get file type (extension)
+			char *ext = strrchr(http_request[1], '.');
+			if (!ext) filetype = "";
+			else filetype = ext + 1;
+
 			// make sure incoming file types are supported
-			int valid = 1;
 			for (int i = 0; i < TYPELENGTH; i++)
-				if (strcmp(file_types[i], fileType(http_request[1])) == 0) {
-					valid = 0;
+				if (strcmp(file_types[i], filetype) == 0) {
+					filetype_index = i;
 					break;
 				}
-			if (valid) error500(buf, connfd);
 
 			// get directory of file, with request URI
 			strcpy(buf, cwd);
@@ -129,17 +131,18 @@ void server_res(int connfd) {
 				// get content type for the header
 				char *content_type = malloc(100);
 				strcpy(content_type, "Content-Type:");
-				strcat(content_type, contentType(fileType(http_request[1])));
+				/* using filetype index for supported content type */
+				strcat(content_type, content_types[filetype_index]);
 				strcat(content_type, "\r\n");
 
 				// set content length for the header
-				int fsize = lseek(filedesc, 0, SEEK_END);
-				lseek(filedesc, 0, SEEK_SET);
-				char fsize_str[20];
-				sprintf(fsize_str, "%d", fsize);
+				filesize = lseek(filedesc, 0L, SEEK_END);
+				lseek(filedesc, 0L, SEEK_SET);
+				char filesize_string[20];
+				sprintf(filesize_string, "%d", filesize);
 				char *content_length = malloc(100);
 				strcpy(content_length, "Content-Length:");
-				strcat(content_length, fsize_str);
+				strcat(content_length, filesize_string);
 				strcat(content_length, "\r\n");
 
 				// send response
@@ -147,6 +150,7 @@ void server_res(int connfd) {
 				send(connfd, content_type, strlen(content_type), 0);
 				send(connfd, content_length, strlen(content_length), 0);
 				send(connfd, "Connection: Keep-alive\r\n\r\n", 26, 0);
+				// write based on buffer size limit
 				while ((n = read(filedesc, buf, MAXBUF)) > 0)
 					write(connfd, buf, n);
 
@@ -203,13 +207,6 @@ int open_listenfd(int port) {
 	return listenfd;
 } /* end open_listenfd */
 
-/* get file type (extension) of file */
-char *fileType(char *file) {
-	char *ext = strrchr(file, '.');
-	if (!ext) return "";
-	else return ext + 1;
-}
-
 /* Error 500 Internal Server Error handling */
 void error500(char buf[MAXLINE], int connfd) {
 	strcpy(buf, "HTTP/1.1 500 Internal Server Error");
@@ -217,14 +214,7 @@ void error500(char buf[MAXLINE], int connfd) {
 	write(connfd, buf, strlen(buf));
 }
 
+/* Gracefully exit program (while loop) */
 void term(int signum){
 	done = 1;
-}
-
-/* looking at the extension, and return supported content type*/
-char *contentType(char *ext) {
-	for (int i = 0; i < TYPELENGTH; i++)
-		if (strcmp(ext, file_types[i]) == 0)
-			return content_types[i];
-	return "";
 }

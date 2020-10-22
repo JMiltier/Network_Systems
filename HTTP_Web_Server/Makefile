@@ -1,7 +1,8 @@
 # --------------------------------------------------------
 # Makefile - versitility to use again for C or C++ files
 # 'make'            builds executable targets
-# 'make webserver'  creates random number generator object
+# 'make webserver'  creates webserver executable object
+# 'make echoserver' creates echoserver executable object
 # 'make clean'      removes all .o and executable files
 # --------------------------------------------------------
 
@@ -19,13 +20,11 @@ ECHSVR=echoserver
 WEBSVRSRC=webserver.c
 ECHSVRSRC=httpechosrv.c
 
-name= "Josh Miltier"
-
 .PHONY: clean all
 
 all: $(WEBSVR)
 
-$(WEBSVR): clean $(WEBSVRSRC)
+$(WEBSVR):  $(WEBSVRSRC)
 	$(CC) $(CFGLAGS) $(WEBSVRSRC) -o $(WEBSVR)
 
 $(ECHSVR): $(ECHSVRSRC)
