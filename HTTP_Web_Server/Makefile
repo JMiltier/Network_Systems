@@ -24,7 +24,7 @@ ECHSVRSRC=httpechosrv.c
 
 all: $(WEBSVR)
 
-$(WEBSVR):  $(WEBSVRSRC)
+$(WEBSVR): $(WEBSVRSRC)
 	$(CC) $(CFGLAGS) $(WEBSVRSRC) -o $(WEBSVR)
 
 $(ECHSVR): $(ECHSVRSRC)
