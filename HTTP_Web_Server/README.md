@@ -30,6 +30,5 @@ Example: `GET /Protocols/rfc1945/rfc1945 HTTP/1.1`
 2. [System Calls](http://codewiki.wikidot.com/c:system-calls:open)
 3. [Graceful Exits](https://www.systutorials.com/catching-the-signal-sent-by-kill-in-c-on-linux/)
 4. [TCP echo client and server with fork()](http://www.cs.dartmouth.edu/~campbell/cs50/socketprogramming.html)
-5. [TCP echo client and server with threads](TCP echo client and server
-with threads.)
+5. [TCP echo client and server with threads](http://www.binarytides.com/server-client-example-c-sockets-linux/)
 6. [Echo server-client code with threads](http://www.csc.villanova.edu/~mdamian/sockets/echoC.htm)
