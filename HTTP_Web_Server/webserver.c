@@ -61,6 +61,7 @@ int main(int argc, char **argv) {
 	memset(&action, 0, sizeof(struct sigaction));
 	action.sa_handler = term;
 	sigaction(SIGINT, &action, NULL);
+
 	printf("Graceful exit: escape character is 'Ctrl+C'.\n");
 
 	// continuous listening of server
@@ -74,7 +75,7 @@ int main(int argc, char **argv) {
 }
 
 /*
- * requests send to server & server's response
+ * requests sent to server & server's response
  */
 void server_res(int connfd) {
 	size_t n;
