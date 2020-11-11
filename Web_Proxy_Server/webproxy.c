@@ -1,6 +1,6 @@
 /*
- * webserver.c - A concurrent TCP echo server using threads
- * using C code template from httpechosrv.c (same dir)
+ * webproxy.c - A web proxy server using threads
+ * starting with C code from HTTP Web Server project
  */
 
 #include <stdio.h>
@@ -23,8 +23,6 @@
 #define MAXLINE 8192 /* max text line length */
 #define MAXBUF 8192	 /* max I/O buffer size */
 #define LISTENQ 1024 /* second argument to listen() */
-#define TYPELENGTH 7
-#define WWW_SERVER_PATH "/www"
 
 volatile sig_atomic_t done = 0;
 
@@ -36,10 +34,6 @@ void term(int signum);
 void server_res(int n);
 char *getcwd(char *buf, size_t size);
 
-char *file_types[TYPELENGTH] = {"html", "txt", "png", "gif", "jpg", "css", "js"};
-char *content_types[TYPELENGTH] = {"text/html", "text/plain", "image/png", "image/gif",
-																	 "image/jpg", "text/css", "application/javascript"};
-
 /*
  * main driver
  */
@@ -49,7 +43,7 @@ int main(int argc, char **argv) {
 	socklen_t clientlen;
 	pthread_t tid;
 
-	// check arguments
+	// check arguments, then assign proxy's port
 	if (argc != 2) {
 		fprintf(stderr, "usage: %s <port>\n", argv[0]);
 		exit(0);
@@ -86,7 +80,6 @@ void server_res(int connfd) {
 	// set working directory
 	char cwd[MAXLINE];
 	getcwd(cwd, sizeof(cwd));
-	strcat(cwd, WWW_SERVER_PATH);
 
 	// receive message from socket
 	socket_msg = recv(connfd, httpmsg, MAXLINE, 0);
@@ -115,13 +108,6 @@ void server_res(int connfd) {
 			char *ext = strrchr(http_request[1], '.');
 			if (!ext) filetype = "";
 			else filetype = ext + 1;
-
-			// make sure incoming file types are supported
-			for (int i = 0; i < TYPELENGTH; i++)
-				if (strcmp(file_types[i], filetype) == 0) {
-					filetype_index = i;
-					break;
-				}
 
 			// get directory of file, with request URI
 			strcpy(buf, cwd);
@@ -196,6 +182,7 @@ int open_listenfd(int port) {
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serveraddr.sin_port = htons((unsigned short)port);
+	/* binds the server socket */
 	if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
 		return -1;
 
