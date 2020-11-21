@@ -1,8 +1,13 @@
 # 🌐 Web Proxy Server
-An HTTP web server that can handle multiple simultaneous requests from users. An HTTP **request** from a client is received, processed, and those results are sent back to the client as a **response**. HTTP requests consist of three substrings: request method (GET, HEAD, POST, etc.), request URL (separated by '/', treated as a relative path), and request version ('HTTP/x,y', where *x* & *y* are numbers).
+A web proxy server capable of handling HTTP requests from clients to the HTTP servers. Typically the client would connect directly with the server, but useful to sometimes create/introduce an intermediate proxy. This proxy exists between the HTTP clients and HTTP servers, where the clients send HTTP requests to the proxy. Once receiving the request, the proxy forwards the request to the HTTP server. Then, the HTTP server sends a reponse back to the proxy, which in turn forwards that response to the HTTP client. This is advantageous for several reasons: performance, content filtering/transformation, and privacy. 
+
+Proxy advantages outlined:
+  **Performance**: Allows caching of frequently visited pages to reduce the extra time needed for creating a new connection to the HTTP server every time.
+  **Conent Filtering and Transformation**: Inspect URLs from the HTTP client to determine to block some URL connections. The other benefit is reforming webpages for clients with limited processing capabilities. In this case, an example would be something like image transcoding.
+  **Privacy**: If the HTTP server tries to log information about the HTTP client, it can only get information about the proxy (not the actual client). Imagine the benefits of when there are multiple proxies involved in a route. Makes it incredibly hard to trace the orginator.
 
 ### Program
-A *C Language* based program that sends TCP commands/requests to an HTTP server. The web server returns the response back to the client.
+
 
 ## ⚙️ SETUP
 #### Web server testing

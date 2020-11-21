@@ -1,4 +1,4 @@
-# mac
+# mac/vscode
 .DS_Store
 .vscode
 
@@ -9,8 +9,7 @@
 *.zip
 
 # make files
-echoserver
-webserver
+webproxy
 
 # folder for zip
 /jo*/

@@ -66,6 +66,10 @@ int main(int argc, char **argv) {
 		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
 		pthread_create(&tid, NULL, thread, connfdp);
 	}
+
+	// once while loop exits, close sockets
+	shutdown(connfdp, 0);
+	close(connfdp);
 }
 
 /*
@@ -119,7 +123,6 @@ void server_res(int connfd) {
 				char *content_type = malloc(100);
 				strcpy(content_type, "Content-Type:");
 				/* using filetype index for supported content type */
-				strcat(content_type, content_types[filetype_index]);
 				strcat(content_type, "\r\n");
 
 				// set content length for the header
@@ -145,9 +148,6 @@ void server_res(int connfd) {
 			} else error500(buf, connfd);
 		} else error500(buf, connfd);
 	} else error500(buf, connfd);
-
-	shutdown(connfd, 0);
-	close(connfd);
 }
 
 /* thread routine */
