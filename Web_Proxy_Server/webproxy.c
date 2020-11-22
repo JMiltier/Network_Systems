@@ -1,5 +1,5 @@
 /*
- * webproxy.c - A web proxy server using threads
+ * webproxy.c - A web proxy server using pthreads
  * starting with C code from HTTP Web Server project
  */
 
@@ -29,7 +29,9 @@ volatile sig_atomic_t done = 0;
 int open_listenfd(int port);
 void echo(int connfd);
 void *thread(void *vargp);
+void error400(char buf[MAXLINE], int connfd);
 void error500(char buf[MAXLINE], int connfd);
+void error505(char buf[MAXLINE], int connfd);
 void term(int signum);
 void server_res(int n);
 char *getcwd(char *buf, size_t size);
@@ -68,17 +70,17 @@ int main(int argc, char **argv) {
 	}
 
 	// once while loop exits, close sockets
-	shutdown(connfdp, 0);
-	close(connfdp);
+	shutdown(*connfdp, 0);
+	close(*connfdp);
 }
 
 /*
- * requests sent to server & server's response
+ * requests sent to web proxy & web proxy's response
  */
-void server_res(int connfd) {
+void proxy_res(int connfd) {
 	size_t n;
-	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3], *filetype;
-	int filedesc, socket_msg, filesize, filetype_index;
+	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3], address[100], page[100];
+	int filedesc, socket_msg, filesize, port = 80;
 	FILE file;
 
 	// set working directory
@@ -88,30 +90,33 @@ void server_res(int connfd) {
 	// receive message from socket
 	socket_msg = recv(connfd, httpmsg, MAXLINE, 0);
 
-	// idle response
+	// connection closed, possibly from idle response
 	time_t rawtime;
 	struct tm * timeinfo;
 	time ( &rawtime );
   timeinfo = localtime ( &rawtime );
 	if (socket_msg == 0) {
-		printf("Connection has idled at %s. Refresh page to continue.\n", asctime (timeinfo));
+		printf("Connection has closed at time %s.\n", asctime (timeinfo));
+	}
+	// not so good
+	else if (socket_msg < 0) {
+		printf("Fatal socket error"); exit(EXIT_FAILURE);
 	}
 
 	// connected
 	else if (socket_msg > 0) {
+		// parse request
 		http_request[0] = strtok(httpmsg, " \t\n");
+		// GET request from client
 		if (strncmp(http_request[0], "GET\0", 4) == 0) {
-			http_request[1] = strtok(NULL, " \t");
-			http_request[2] = strtok(NULL, " \t\n");
+			http_request[1] = strtok(NULL, " \t"); // url
+			http_request[2] = strtok(NULL, " \t\n"); // http method
 
-			// default landing page/route, no file requested
-			if (strncmp(http_request[1], "/\0", 2) == 0)
-				http_request[1] = "/index.html";
-
-			// for specific files, get file type (extension)
-			char *ext = strrchr(http_request[1], '.');
-			if (!ext) filetype = "";
-			else filetype = ext + 1;
+			// parse url
+			sscanf(http_request[1], "http://%99[^:]:%99d/%99[^\n]", address, &port, page);
+			printf("address: %s\n", address);
+			printf("port: %d\n", port);
+			printf("page: %s\n", page);
 
 			// get directory of file, with request URI
 			strcpy(buf, cwd);
@@ -145,8 +150,8 @@ void server_res(int connfd) {
 					write(connfd, buf, n);
 
 /** If any cases fail above, respond with Error 500 **/
-			} else error500(buf, connfd);
-		} else error500(buf, connfd);
+			} else error400(buf, connfd);
+		} else error505(buf, connfd);
 	} else error500(buf, connfd);
 }
 
@@ -154,9 +159,9 @@ void server_res(int connfd) {
 void *thread(void *vargp) {
 	int connfd = *((int *)vargp);
 	pthread_detach(pthread_self());
+	proxy_res(connfd);
 	free(vargp);
-	server_res(connfd);
-	close(connfd);
+	// close(connfd);
 	return NULL;
 }
 
@@ -195,14 +200,27 @@ int open_listenfd(int port) {
 	return listenfd;
 } /* end open_listenfd */
 
-/* Error 500 Internal Server Error handling */
+/* Error handling for HTTP client requests */
+// Error 400 errors
+void error400(char buf[MAXLINE], int connfd) {
+	strcpy(buf, "HTTP/1.1 400 Bad Request");
+	strcat(buf, "\n");
+	write(connfd, buf, strlen(buf));
+}
+// Error 500 Internal Server Error handling
 void error500(char buf[MAXLINE], int connfd) {
 	strcpy(buf, "HTTP/1.1 500 Internal Server Error");
 	strcat(buf, "\n");
 	write(connfd, buf, strlen(buf));
 }
+// Error 505 HTTP version error handling
+void error505(char buf[MAXLINE], int connfd) {
+	strcpy(buf, "HTTP/1.1 505 HTTP Version not supported");
+	strcat(buf, "\n");
+	write(connfd, buf, strlen(buf));
+}
 
-/* Gracefully exit program (while loop) */
+/* Gracefully exit program (while loop) with Ctrl+C press */
 void term(int signum){
 	done = 1;
 }
