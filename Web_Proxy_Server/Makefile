@@ -19,7 +19,7 @@ WEBSVRSRC=webproxy.c
 
 .PHONY: clean all
 
-all: $(WEBSVR)
+all: clean $(WEBSVR)
 
 $(WEBSVR): $(WEBSVRSRC)
 	$(CC) $(CFGLAGS) $(WEBSVRSRC) -o $(WEBSVR)
