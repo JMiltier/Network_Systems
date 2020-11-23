@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 void proxy_res(int connfd) {
 	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3], host[100], page[100];
 	int socket_msg, port = 80, server_socket;
-	struct hostent *phe;
+	struct hostent *resolve_hostname;
 	struct sockaddr_in serveraddr;
 	socklen_t serverlen;
 	size_t n;
@@ -160,30 +160,40 @@ void proxy_res(int connfd) {
 			// serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 			serveraddr.sin_port = htons((int)port);
 
-			phe = gethostbyname(host);
-			memcpy(&serveraddr.sin_addr, phe->h_addr, phe->h_length);
+			// resolve the hostname
+			resolve_hostname = gethostbyname(host);
+			if (resolve_hostname == NULL) {
+				perror("\nUnable to resolve hostname.\n");
+			}
+			memcpy(&serveraddr.sin_addr, resolve_hostname->h_addr, resolve_hostname->h_length);
+			// printf("Hostname address resolved to: %s\n", inet_ntoa(serveraddr.sin_addr));
 
+			// create HTTP server socket
 			if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 				perror("\nError creating HTTP server socket.\n");
 			};
 
-			// attempt to connect to HTTP server
-			if (connect(server_socket, (struct sockaddr *)&serveraddr, serverlen) < 0) {
+			// connect to HTTP server
+			if (connect(server_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
 				perror("\nError connecting to HTTP server.\n");
 			}
 
+			// create message to send to HTTP server
 			strcat(buf, http_request[0]);
-			strcat(buf, page);
+			strcat(buf, " http://");
+			strcat(buf, host);
 			strcat(buf, " ");
 			strcat(buf, http_request[2]);
-			strcat(buf, "\r\nHost: ");
-			strcat(buf, host);
-			strcat(buf, "\r\nProxy-Connection: keep-alive\r\n\r\n");
-			if (send(server_socket, &buf, strlen(buf), 0) > 0) {
-				printf("Send sucessful on socket %i\n", connfd);
+			strcat(buf, "\r\n\r\n");
+			// send the response from the HTTP client to the HTTP server
+			if (send(server_socket, buf, strlen(buf), 0) > 0) {
+				printf("Message send to server %s on socket %i\n", host, connfd);
 			} else httpError(buf, connfd, 404, http_request[2]); // sending data
 
-			while ((n = recv(socket_msg, &buf, BUFSIZ, 0)) > 0) {
+
+			/* Handle message back from server */
+			memset(&buf[0], 0, sizeof(buf)); // result buffer to use it
+			while ((n = recv(socket_msg, &buf, MAXBUF, 0)) > 0) {
 				send(connfd, &buf, n, 0);
 			}
 		} else httpError(buf, connfd, 400, http_request[2]); // request method

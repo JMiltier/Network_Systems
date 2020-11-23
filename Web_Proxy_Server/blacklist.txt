@@ -1,1 +1,4 @@
 www.csu.edu
+www.facebook.com
+www.cnn.com
+192.168.43.20
