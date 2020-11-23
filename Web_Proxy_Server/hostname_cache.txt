@@ -1,0 +1,4 @@
+www.google.com 172.217.1.196
+www.google.com 172.217.11.228
+www.yahoo.com 98.137.11.163
+www.yahoo.com 74.6.231.21

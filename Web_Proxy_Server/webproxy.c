@@ -89,7 +89,8 @@ int main(int argc, char **argv) {
  * requests sent to web proxy & web proxy's response
  */
 void proxy_res(int connfd) {
-	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3], host[100], page[100];
+	char buf[MAXBUF], httpmsg[MAXLINE], *http_request[3];
+	char host[100], page[100], ip_addr[20];
 	int socket_msg, port = 80, server_socket;
 	struct hostent *resolve_hostname;
 	struct sockaddr_in serveraddr;
@@ -123,7 +124,6 @@ void proxy_res(int connfd) {
 		if (strcmp(http_request[2], "HTTP/1.0\0") != 0 && strcmp(http_request[2], "HTTP/1.1\0") != 0
 				&& strcmp(http_request[2], "HTTP/2.0\0") != 0 && strcmp(http_request[2], "HTTP/2\0") != 0) {
 			httpError(buf, connfd, 505, http_request[2]);
-			exit(EXIT_FAILURE);
 		}
 
 		// GET request from client
@@ -160,13 +160,41 @@ void proxy_res(int connfd) {
 			// serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 			serveraddr.sin_port = htons((int)port);
 
-			// resolve the hostname
-			resolve_hostname = gethostbyname(host);
-			if (resolve_hostname == NULL) {
-				perror("\nUnable to resolve hostname.\n");
+			// check if hostname has already been resolved
+			FILE *host_cache_file;
+			char hostname[100];
+			host_cache_file = fopen("hostname_cache.txt", "r");
+			while (!feof(host_cache_file)) {
+				fscanf(host_cache_file, "%s%*[^\n]", hostname);
+				if (strcmp(host, hostname) == 0) {
+					fscanf(host_cache_file, " %*s%s%*[^\n]", ip_addr);
+					break;
+				}
 			}
-			memcpy(&serveraddr.sin_addr, resolve_hostname->h_addr, resolve_hostname->h_length);
+			fclose(host_cache_file);
+
+			if (strcmp(ip_addr, "") == 0) {
+				// not resolved, so get the hostname and store it
+				resolve_hostname = gethostbyname(host);
+				if (resolve_hostname == NULL) {
+					perror("\nUnable to resolve hostname.\n");
+					httpError(buf, connfd, 404, http_request[2]);
+				}
+				memcpy(&serveraddr.sin_addr, resolve_hostname->h_addr, resolve_hostname->h_length);
+				// write to hostname cache file
+				host_cache_file = fopen("hostname_cache.txt", "a");
+				fprintf(host_cache_file, "%s ", host);
+				fprintf(host_cache_file, "%s\n", inet_ntoa(serveraddr.sin_addr));
+				fclose(host_cache_file);
+			} else {
+				serveraddr.sin_addr.s_addr = inet_addr(ip_addr);
+			}
 			// printf("Hostname address resolved to: %s\n", inet_ntoa(serveraddr.sin_addr));
+
+			// check for blacklisted hosts or IPs
+			if (blacklisted(host) || blacklisted(ip_addr)) {
+				httpError(buf, connfd, 403, http_request[2]);
+			}
 
 			// create HTTP server socket
 			if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
@@ -180,21 +208,23 @@ void proxy_res(int connfd) {
 
 			// create message to send to HTTP server
 			strcat(buf, http_request[0]);
-			strcat(buf, " http://");
-			strcat(buf, host);
+			strcat(buf, " ");
+			strcat(buf, http_request[1]);
 			strcat(buf, " ");
 			strcat(buf, http_request[2]);
 			strcat(buf, "\r\n\r\n");
+
+			// printf("request %s", buf);
 			// send the response from the HTTP client to the HTTP server
 			if (send(server_socket, buf, strlen(buf), 0) > 0) {
-				printf("Message send to server %s on socket %i\n", host, connfd);
+				// printf("Message sent to server %s on socket %i\n", host, connfd);
 			} else httpError(buf, connfd, 404, http_request[2]); // sending data
-
 
 			/* Handle message back from server */
 			memset(&buf[0], 0, sizeof(buf)); // result buffer to use it
-			while ((n = recv(socket_msg, &buf, MAXBUF, 0)) > 0) {
-				send(connfd, &buf, n, 0);
+			while ((n = recv(server_socket, buf, sizeof(buf), 0)) > 0) {
+				// printf("Data from server %s retrieved, sending back to client at socket %i\n", host, connfd);
+				send(connfd, buf, n, 0);
 			}
 		} else httpError(buf, connfd, 400, http_request[2]); // request method
 	} else httpError(buf, connfd, 500, http_request[2]); // socket issues

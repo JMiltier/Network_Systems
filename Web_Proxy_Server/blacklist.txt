@@ -2,3 +2,5 @@ www.csu.edu
 www.facebook.com
 www.cnn.com
 192.168.43.20
+98.137.11.163
+74.6.231.21
