@@ -18,7 +18,7 @@
 #include <pthread.h>
 #include <signal.h> 		/* to gracefully stop */
 #include <limits.h>
-#include <time.h> 			/* for time keeping */
+#include <time.h> 			/* for time keeping, and cache timeout */
 
 #define MAXLINE 8192 /* max text line length */
 #define MAXBUF 8192	 /* max I/O buffer size */
@@ -27,34 +27,39 @@
 volatile sig_atomic_t done = 0;
 
 int open_listenfd(int port);
-void echo(int connfd);
 void *thread(void *vargp);
-void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]);
-void term(int signum);
 void proxy_res(int n);
-char *getcwd(char *buf, size_t size);
+void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]);
+int blacklisted(char host[100]);
+void term(int signum);
 
 /*
  * main driver
  */
 int main(int argc, char **argv) {
-	int listenfd, *connfdp, port;
+	int listenfd, *connfdp, port, timeout = 0;
 	struct sockaddr_in clientaddr;
 	socklen_t clientlen;
 	pthread_t tid;
 
 	// check arguments, then assign proxy's port
-	if (argc != 2) {
-		fprintf(stderr, "usage: %s <port>\n", argv[0]);
+	if (2 != argc && argc != 3) {
+		fprintf(stderr, "usage: %s <port> <timeout>\n", argv[0]);
 		exit(0);
 	}
 	port = atoi(argv[1]);
+	if (argc == 3) timeout = atoi(argv[2]);
 
 	// gracefully exit
 	struct sigaction action;
 	memset(&action, 0, sizeof(struct sigaction));
 	action.sa_handler = term;
 	sigaction(SIGINT, &action, NULL);
+
+	// for timeout handling
+	time_t start_t, end_t;
+	double diff_t;
+	time(&start_t);
 
 	printf("Graceful exit: escape character is 'Ctrl+C'.\n");
 
@@ -65,11 +70,19 @@ int main(int argc, char **argv) {
 		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
 		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
 		pthread_create(&tid, NULL, thread, connfdp);
+
+		// timeout setting
+		if (timeout) {
+			time(&end_t);
+			diff_t = difftime(end_t, start_t);
+			if (diff_t > timeout) done = 1;
+		}
 	}
 
 	// once while loop gracefully exits, close connections
-	// shutdown(*connfdp, 0);
-	// close(*connfdp);
+	shutdown(*connfdp, 0);
+	close(*connfdp);
+	close(listenfd);
 }
 
 /*
@@ -77,15 +90,11 @@ int main(int argc, char **argv) {
  */
 void proxy_res(int connfd) {
 	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3], host[100], page[100];
-	int socket_msg, port = 80, httpsocket;
+	int socket_msg, port = 80, server_socket;
 	struct hostent *phe;
-	struct sockaddr_in proxyaddr;
-	socklen_t proxylen;
+	struct sockaddr_in serveraddr;
+	socklen_t serverlen;
 	size_t n;
-
-	// set working directory
-	char cwd[MAXLINE];
-	getcwd(cwd, sizeof(cwd));
 
 	// receive message from socket
 	socket_msg = recv(connfd, httpmsg, MAXLINE, 0);
@@ -141,16 +150,27 @@ void proxy_res(int connfd) {
 				httpError(buf, connfd, 404, http_request[2]);
 			}
 
-			memset(&proxyaddr, 0, sizeof(proxyaddr));
-			proxyaddr.sin_family = AF_INET;
-			proxyaddr.sin_addr.s_addr = inet_addr(http_request[1]);
-			proxyaddr.sin_port = htons((unsigned short)port);
+			// check for blacklisted hosts
+			if (blacklisted(host)) {
+				httpError(buf, connfd, 403, http_request[2]);
+			}
+
+			memset(&serveraddr, 0, serverlen);
+			serveraddr.sin_family = AF_INET;
+			// serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+			serveraddr.sin_port = htons((int)port);
 
 			phe = gethostbyname(host);
-			memcpy(&proxyaddr.sin_addr, phe->h_addr, phe->h_length);
+			memcpy(&serveraddr.sin_addr, phe->h_addr, phe->h_length);
 
-			httpsocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-			connect(httpsocket, (struct sockaddr *)&proxyaddr, proxylen);
+			if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+				perror("\nError creating HTTP server socket.\n");
+			};
+
+			// attempt to connect to HTTP server
+			if (connect(server_socket, (struct sockaddr *)&serveraddr, serverlen) < 0) {
+				perror("\nError connecting to HTTP server.\n");
+			}
 
 			strcat(buf, http_request[0]);
 			strcat(buf, page);
@@ -159,12 +179,11 @@ void proxy_res(int connfd) {
 			strcat(buf, "\r\nHost: ");
 			strcat(buf, host);
 			strcat(buf, "\r\nProxy-Connection: keep-alive\r\n\r\n");
-			if (send(httpsocket, &buf, strlen(buf), 0) > 0) {
+			if (send(server_socket, &buf, strlen(buf), 0) > 0) {
 				printf("Send sucessful on socket %i\n", connfd);
 			} else httpError(buf, connfd, 404, http_request[2]); // sending data
 
-			while ((n = recv(httpsocket, &buf, BUFSIZ, 0)) > 0) {
-				buf[n] = '\0';
+			while ((n = recv(socket_msg, &buf, BUFSIZ, 0)) > 0) {
 				send(connfd, &buf, n, 0);
 			}
 		} else httpError(buf, connfd, 400, http_request[2]); // request method
@@ -222,6 +241,7 @@ int open_listenfd(int port) {
 
 /* Error handling for HTTP client requests */
 void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]) {
+	memset(&buf[0], 0, MAXLINE);
 	switch (error) {
 		case 400:
 			strcat(buf, httpVersion);
@@ -230,6 +250,7 @@ void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]) {
 		case 403:
 			strcat(buf, httpVersion);
 			strcat(buf, " 403 Forbidden");
+			break;
 		case 404:
 			strcat(buf, httpVersion);
 			strcat(buf, " 404 Not Found");
@@ -249,6 +270,24 @@ void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]) {
 	}
 	strcat(buf, "\n");
 	send(connfd, buf, strlen(buf), 0);
+	shutdown(connfd, 0);
+	close(connfd);
+}
+
+int blacklisted(char host[100]) {
+	FILE *fp;
+	char *line = NULL;
+	size_t len = 0;
+	fp = fopen("blacklist.txt", "r");
+
+	while (getline(&line, &len, fp) != -1) {
+		if (strcmp(host, line) == 0) {
+			fclose(fp);
+			return 1; // host is blacklisted
+		}
+	}
+	fclose(fp);
+	return 0; // host is not blacklisted
 }
 
 /* Gracefully exit program (while loop) with Ctrl+C press */
