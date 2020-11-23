@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
 
 	printf("Graceful exit: escape character is 'Ctrl+C'.\n");
 
-	// continuous listening of server
+	// continuous listening of proxy server
 	listenfd = open_listenfd(port);
 	while (!done) {
 		connfdp = malloc(sizeof(int));
@@ -67,19 +67,21 @@ int main(int argc, char **argv) {
 		pthread_create(&tid, NULL, thread, connfdp);
 	}
 
-	// once while loop exits, close sockets
-	shutdown(*connfdp, 0);
-	close(*connfdp);
+	// once while loop gracefully exits, close connections
+	// shutdown(*connfdp, 0);
+	// close(*connfdp);
 }
 
 /*
  * requests sent to web proxy & web proxy's response
  */
 void proxy_res(int connfd) {
-	size_t n;
 	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3], host[100], page[100];
-	int filedesc, socket_msg, filesize, port = 80;
-	FILE file;
+	int socket_msg, port = 80, httpsocket;
+	struct hostent *phe;
+	struct sockaddr_in proxyaddr;
+	socklen_t proxylen;
+	size_t n;
 
 	// set working directory
 	char cwd[MAXLINE];
@@ -104,19 +106,20 @@ void proxy_res(int connfd) {
 	// connected
 	else if (socket_msg > 0) {
 		// parse request
-		http_request[0] = strtok(httpmsg, " \r\t\n");
+		http_request[0] = strtok(httpmsg, " \r\t\n"); // method
+		http_request[1] = strtok(NULL, " \r\t\n"); // url
+		http_request[2] = strtok(NULL, " \r\t\n"); // http version
+
+		// check if http version is supported (not checking for HTTP/0.9)
+		if (strcmp(http_request[2], "HTTP/1.0\0") != 0 && strcmp(http_request[2], "HTTP/1.1\0") != 0
+				&& strcmp(http_request[2], "HTTP/2.0\0") != 0 && strcmp(http_request[2], "HTTP/2\0") != 0) {
+			httpError(buf, connfd, 505, http_request[2]);
+			exit(EXIT_FAILURE);
+		}
+
 		// GET request from client
-		if (strncmp(http_request[0], "GET\0", 4) == 0) {
-			http_request[1] = strtok(NULL, " \r\t\n"); // url
-			http_request[2] = strtok(NULL, " \r\t\n"); // http version
-
-			// check if http version is supported (not checking for HTTP/0.9)
-			if (strcmp(http_request[2], "HTTP/1.0\0") != 0 && strcmp(http_request[2], "HTTP/1.2\0") != 0
-					&& strcmp(http_request[2], "HTTP/2.0\0") != 0 && strcmp(http_request[2], "HTTP/2\0") != 0) {
-				httpError(buf, connfd, 505, http_request[2]);
-				exit(EXIT_FAILURE);
-			}
-
+		if (strcmp(http_request[0], "GET\0") == 0) {
+			/* URL PARSING */
 			// parse url with port
 			if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 7) {
 				sscanf(http_request[1], "http://%99[^:]:%6i/%99[^\n]", host, &port, page);
@@ -130,53 +133,46 @@ void proxy_res(int connfd) {
 				sscanf(http_request[1], "http://%99[^:]:%6i[^\n]", host, &port);
 			}
 			// just has regular host request (no port or content request)
-			else {
+			else if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 1) {
 				sscanf(http_request[1], "http://%99[^\n]", host);
 			}
-			// printf("host: %s\n", host);
-			// printf("port: %i\n", port);
-			// printf("page: %s\n", page);
+			// else an error, since unable to parse URL
+			else {
+				httpError(buf, connfd, 404, http_request[2]);
+			}
 
-			// get directory of file, with request URI
-			strcpy(buf, cwd);
-			strcpy(&buf[strlen(cwd)], http_request[1]);
+			memset(&proxyaddr, 0, sizeof(proxyaddr));
+			proxyaddr.sin_family = AF_INET;
+			proxyaddr.sin_addr.s_addr = inet_addr(http_request[1]);
+			proxyaddr.sin_port = htons((unsigned short)port);
 
-			// strcpy(buf, http_request[0]);
-			// strcpy(buf, page);
-			// strcpy(buf, http_request[2]);
-			// strcpy(buf, "\r\nHost: ");
-			// strcpy(buf, host);
-			// strcpy(buf, "\r\nConnection: keep-alive\r\n\r\n");
-			// send(connfd, &buf.c_str(), strlen(buf.))
+			phe = gethostbyname(host);
+			memcpy(&proxyaddr.sin_addr, phe->h_addr, phe->h_length);
 
-			// system call, open file and read in descriptor
-			if ((filedesc = open(buf, 0)) != -1) {
-				// get content type for the header
-				char *content_type = malloc(100);
-				strcpy(content_type, http_request[0]);
-				strcpy(content_type, " ");
-				strcpy(content_type, page);
-				strcat(content_type, "\r\n");
+			httpsocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+			connect(httpsocket, (struct sockaddr *)&proxyaddr, proxylen);
 
-				// set content length for the header
-				char *content_host = malloc(100);
-				strcpy(content_host, "Host :");
-				strcat(content_host, host);
-				strcat(content_host, "\r\n");
+			strcat(buf, http_request[0]);
+			strcat(buf, page);
+			strcat(buf, " ");
+			strcat(buf, http_request[2]);
+			strcat(buf, "\r\nHost: ");
+			strcat(buf, host);
+			strcat(buf, "\r\nProxy-Connection: keep-alive\r\n\r\n");
+			if (send(httpsocket, &buf, strlen(buf), 0) > 0) {
+				printf("Send sucessful on socket %i\n", connfd);
+			} else httpError(buf, connfd, 404, http_request[2]); // sending data
 
-				// send response
-				send(connfd, "HTTP/1.1 200 Document Follows\r\n", 31, 0);
-				send(connfd, content_type, strlen(content_type), 0);
-				send(connfd, content_host, strlen(content_host), 0);
-				send(connfd, "Connection: Keep-alive\r\n\r\n", 26, 0);
-				// write based on buffer size limit
-				while ((n = read(filedesc, buf, MAXBUF)) > 0)
-					write(connfd, buf, n);
-
-	/** If any cases fail above, respond with an HTTP error **/
-			} else httpError(buf, connfd, 505, http_request[2]);
+			while ((n = recv(httpsocket, &buf, BUFSIZ, 0)) > 0) {
+				buf[n] = '\0';
+				send(connfd, &buf, n, 0);
+			}
 		} else httpError(buf, connfd, 400, http_request[2]); // request method
-	} else httpError(buf, connfd, 500, http_request[2]);
+	} else httpError(buf, connfd, 500, http_request[2]); // socket issues
+
+	memset(&buf[0], 0, sizeof(buf));
+	shutdown(connfd, 0);
+	close(connfd);
 }
 
 /* thread routine */
@@ -185,7 +181,7 @@ void *thread(void *vargp) {
 	pthread_detach(pthread_self());
 	proxy_res(connfd);
 	free(vargp);
-	// close(connfd);
+	close(connfd);
 	return NULL;
 }
 
@@ -229,28 +225,30 @@ void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]) {
 	switch (error) {
 		case 400:
 			strcat(buf, httpVersion);
-			strcat(buf, ": 400 Bad Request");
+			strcat(buf, " 400 Bad Request");
 			break;
+		case 403:
+			strcat(buf, httpVersion);
+			strcat(buf, " 403 Forbidden");
 		case 404:
 			strcat(buf, httpVersion);
-			strcat(buf, ": 404 Not Found");
+			strcat(buf, " 404 Not Found");
 			break;
 		case 500:
 			strcat(buf, httpVersion);
-			strcat(buf, ": 500 Internal Server Error");
+			strcat(buf, " 500 Internal Server Error");
 			break;
 		case 505:
 			strcat(buf, httpVersion);
-			strcat(buf, ": 505 HTTP Version not supported");
+			strcat(buf, " 505 HTTP Version not supported");
 			break;
 		default:
 			strcat(buf, httpVersion);
-			strcat(buf, ": 420 Unknown Error");
+			strcat(buf, " 400 Bad Request");
 			break;
 	}
 	strcat(buf, "\n");
-	write(connfd, buf, strlen(buf));
-	// done = 1;
+	send(connfd, buf, strlen(buf), 0);
 }
 
 /* Gracefully exit program (while loop) with Ctrl+C press */
