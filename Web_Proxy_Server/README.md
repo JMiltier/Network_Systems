@@ -37,12 +37,12 @@ Example: `GET http://coolestwebsiteever.com HTTP/1.1`
 2. [System Calls](http://codewiki.wikidot.com/c:system-calls:open)
 3. [Graceful Exits](https://www.systutorials.com/catching-the-signal-sent-by-kill-in-c-on-linux/)
 4. [C/C++ signal handling](http://www.yolinux.com/TUTORIALS/C++Signals.html)
-4. [TCP echo client and server with fork()](http://www.cs.dartmouth.edu/~campbell/cs50/socketprogramming.html)
-5. [TCP echo client and server with threads](http://www.binarytides.com/server-client-example-c-sockets-linux/)
-6. [Echo server-client code with threads](http://www.csc.villanova.edu/~mdamian/sockets/echoC.htm)
-9. [HTTP status codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes)
-10. [HTTP version errors](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1)
-11. [Hostname resolving](https://www.binarytides.com/hostname-to-ip-address-c-sockets-linux/)
+5. [TCP echo client and server with fork()](http://www.cs.dartmouth.edu/~campbell/cs50/socketprogramming.html)
+6. [TCP echo client and server with threads](http://www.binarytides.com/server-client-example-c-sockets-linux/)
+7. [Echo server-client code with threads](http://www.csc.villanova.edu/~mdamian/sockets/echoC.htm)
+8. [HTTP status codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes)
+9. [HTTP version errors](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1)
+10. [Hostname resolving](https://www.binarytides.com/hostname-to-ip-address-c-sockets-linux/)
 
 <!-- CREATE PDF FROM MARKDOWN -->
 <!-- md2pdf README.md --highlight-style atom-one-dark --pdf-options '{ "format": "Letter", "margin": "20mm", "printBackground": true }' -->

@@ -2,3 +2,10 @@ www.google.com 172.217.1.196
 www.google.com 172.217.11.228
 www.yahoo.com 98.137.11.163
 www.yahoo.com 74.6.231.21
+www.stackoverflow.com 151.101.1.69
+www.github.com 140.82.112.4
+www.github.com 140.82.112.3
+canvas.colorado.edu 3.95.111.128
+applied.cs.colorado.edu 34.83.252.28
+cs.colorado.edu 128.138.68.24
+en.cppreference.com 74.114.90.46

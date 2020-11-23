@@ -75,7 +75,10 @@ int main(int argc, char **argv) {
 		if (timeout) {
 			time(&end_t);
 			diff_t = difftime(end_t, start_t);
-			if (diff_t > timeout) done = 1;
+			if (diff_t > timeout){
+				printf("Exiting due to proxy server timeout.\n");
+				done = 1;
+			}
 		}
 	}
 
@@ -108,17 +111,21 @@ void proxy_res(int connfd) {
 	if (socket_msg == 0) {
 		printf("Socket %i: connection was closed at %s\n", socket_msg, asctime (timeinfo));
 	}
-	// not so good
+	// not so good, client socket error
 	else if (socket_msg < 0) {
 		printf("Fatal socket connection error"); exit(EXIT_FAILURE);
 	}
 
 	// connected
 	else if (socket_msg > 0) {
-		// parse request
+		// parse request, while error checking (update from strtok to strsep, to handle empty strings and not error)
 		http_request[0] = strtok(httpmsg, " \r\t\n"); // method
 		http_request[1] = strtok(NULL, " \r\t\n"); // url
 		http_request[2] = strtok(NULL, " \r\t\n"); // http version
+
+		// make sure formatting properly
+		if (strncmp(http_request[1], "http://", 6) != 0 || strncmp(http_request[2], "HTTP", 4) != 0)
+			httpError(buf, connfd, 0, NULL);
 
 		// check if http version is supported (not checking for HTTP/0.9)
 		if (strcmp(http_request[2], "HTTP/1.0\0") != 0 && strcmp(http_request[2], "HTTP/1.1\0") != 0
@@ -150,11 +157,6 @@ void proxy_res(int connfd) {
 				httpError(buf, connfd, 404, http_request[2]);
 			}
 
-			// check for blacklisted hosts
-			if (blacklisted(host)) {
-				httpError(buf, connfd, 403, http_request[2]);
-			}
-
 			memset(&serveraddr, 0, serverlen);
 			serveraddr.sin_family = AF_INET;
 			// serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -163,16 +165,18 @@ void proxy_res(int connfd) {
 			// check if hostname has already been resolved
 			FILE *host_cache_file;
 			char hostname[100];
+			char cache_ip[20];
 			host_cache_file = fopen("hostname_cache.txt", "r");
 			while (!feof(host_cache_file)) {
-				fscanf(host_cache_file, "%s%*[^\n]", hostname);
+				fscanf(host_cache_file, "%s %s%*[^\n]", hostname, cache_ip);
 				if (strcmp(host, hostname) == 0) {
-					fscanf(host_cache_file, " %*s%s%*[^\n]", ip_addr);
+					strcpy(ip_addr, cache_ip);
 					break;
 				}
 			}
 			fclose(host_cache_file);
 
+			// host's IP not cached, resolve
 			if (strcmp(ip_addr, "") == 0) {
 				// not resolved, so get the hostname and store it
 				resolve_hostname = gethostbyname(host);
@@ -304,8 +308,7 @@ void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]) {
 			strcat(buf, " 505 HTTP Version not supported");
 			break;
 		default:
-			strcat(buf, httpVersion);
-			strcat(buf, " 400 Bad Request");
+			strcat(buf, "Invalid request format. Use: <METHOD> <PATH> <VERSION>. Refer to README for more info.");
 			break;
 	}
 	strcat(buf, "\n");
