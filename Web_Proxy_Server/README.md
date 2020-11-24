@@ -32,6 +32,11 @@ Example: `GET http://coolestwebsiteever.com HTTP/1.1`
 ### Executing
   Once web proxy object is created, run `./webproxy <PORT>` in the terminal/console from the root directory of the executable file. In a separate console, run `telnet localhost <PORT>`, where *<PORT>* is the port assigned in the webproxy. Once loaded, requests can be made to the proxy using the HTTP User (client) Commands format above.
 
+#### Additional files:
+  - blacklist.txt: list of blocked hostnames and IPs that are not allowed
+  - hostname_cache.txt: list of hostnames and their IP addresses that have been resolved before
+  - /pages_caches: directory to store cached webpages that have been requested
+
 #### Resources
 1. [Socket - accept](https://man7.org/linux/man-pages/man2/accept.2.html)
 2. [System Calls](http://codewiki.wikidot.com/c:system-calls:open)

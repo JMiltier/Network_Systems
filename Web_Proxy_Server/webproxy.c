@@ -81,6 +81,13 @@ int main(int argc, char **argv) {
 			check_hostname_caches();
 			exp_check = 1;
 		}
+
+		// do not check/purge blacklist, as these should be managed manually
+		connfdp = malloc(sizeof(int));
+		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
+		pthread_create(&tid, NULL, thread, connfdp);
+
 		// timeout setting
 		if (timeout) {
 			time(&end_t);
@@ -90,11 +97,6 @@ int main(int argc, char **argv) {
 				done = 1;
 			}
 		}
-		// do not check/purge blacklist, as these should be managed manually
-		connfdp = malloc(sizeof(int));
-		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
-		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
-		pthread_create(&tid, NULL, thread, connfdp);
 	}
 	// once while loop gracefully exits, close connections
 	shutdown(*connfdp, 0);
@@ -107,6 +109,7 @@ int main(int argc, char **argv) {
  */
 void proxy_res(int connfd) {
 	char buf[MAXBUF], httpmsg[MAXLINE], *http_request[3];
+	char filestruct[MAXLINE];
 	char host[100], page[100], ip_addr[20];
 	int socket_msg, port = 80, server_socket;
 	struct hostent *resolve_hostname;
@@ -133,12 +136,16 @@ void proxy_res(int connfd) {
 	// connected
 	else if (socket_msg > 0) {
 		// parse request
-		http_request[0] = strtok(httpmsg, " \r\t\n"); // method
-		http_request[1] = strtok(NULL, " \r\t\n"); // url
+		http_request[0] = strtok(httpmsg, " \r\t"); // method
+		http_request[1] = strtok(NULL, " \r\t"); // url
 		http_request[2] = strtok(NULL, " \r\t\n"); // http version
 
+		printf("what's method? %s\n", http_request[0]);
+		printf("what's url? %s\n", http_request[1]);
+		printf("what's version? %s\n", http_request[2]);
+
 		// make sure formatting properly
-		if (strncmp(http_request[1], "http://", 6) != 0 || strncmp(http_request[2], "HTTP", 4) != 0)
+		if (strncmp(http_request[1], "http", 4) != 0 || strncmp(http_request[2], "HTTP", 4) != 0)
 			httpError(buf, connfd, 0, NULL);
 
 		// check if http version is supported (not checking for HTTP/0.9)
@@ -150,25 +157,47 @@ void proxy_res(int connfd) {
 		// GET request from client
 		if (strcmp(http_request[0], "GET\0") == 0) {
 			/* URL PARSING */
-			// parse url with port
-			if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 7) {
-				sscanf(http_request[1], "http://%99[^:]:%6i/%99[^\n]", host, &port, page);
+			// for HTTPS
+			if (strncmp(http_request[1], "https", 5) == 0) {
+				// parse url with port
+				if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 7)
+					sscanf(http_request[1], "https://%99[^:]:%6i/%99[^\n]", host, &port, page);
+				// parse url with no port specified, but has content request
+				else if ((int)(strrchr(http_request[1], '/') - http_request[1]) > 7)
+					sscanf(http_request[1], "https://%99[^/]/%99[^\n]", host, page);
+				// parse url with no content request, but has port
+				else if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 7)
+					sscanf(http_request[1], "https://%99[^:]:%6i[^\n]", host, &port);
+				// just has regular host request (no port or content request)
+				else if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 1)
+					sscanf(http_request[1], "https://%99[^\n]", host);
+				// else an error, since unable to parse URL
+				else httpError(buf, connfd, 404, http_request[2]);
 			}
-			// parse url with no port specified, but has content request
-			else if ((int)(strrchr(http_request[1], '/') - http_request[1]) > 7) {
-				sscanf(http_request[1], "http://%99[^/]/%99[^\n]", host, page);
-			}
-			// parse url with no content request, but has port
-			else if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 7) {
-				sscanf(http_request[1], "http://%99[^:]:%6i[^\n]", host, &port);
-			}
-			// just has regular host request (no port or content request)
-			else if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 1) {
-				sscanf(http_request[1], "http://%99[^\n]", host);
-			}
-			// else an error, since unable to parse URL
-			else {
-				httpError(buf, connfd, 404, http_request[2]);
+			// FOR HTTP
+			else if (strncmp(http_request[1], "http", 4) == 0) {
+				// parse url with port
+				if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 7)
+					sscanf(http_request[1], "http://%99[^:]:%6i/%99[^\n]", host, &port, page);
+				// parse url with no port specified, but has content request
+				else if ((int)(strrchr(http_request[1], '/') - http_request[1]) > 7)
+					sscanf(http_request[1], "http://%99[^/]/%99[^\n]", host, page);
+				// parse url with no content request, but has port
+				else if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 7)
+					sscanf(http_request[1], "http://%99[^:]:%6i[^\n]", host, &port);
+				// just has regular host request (no port or content request)
+				else if ((int)(strrchr(http_request[1], ':') - http_request[1]) > 1)
+					sscanf(http_request[1], "http://%99[^\n]", host);
+				// else an error, since unable to parse URL
+				else httpError(buf, connfd, 404, http_request[2]);
+			} else httpError(buf, connfd, 404, http_request[2]);
+
+			// to use for page caching
+			strcpy(filestruct, host);
+			if(strcmp(page, "") != 0) {
+				strcat(filestruct, "_");
+				strcat(filestruct, page);
+				strcat(filestruct, ".txt");
 			}
 
 			memset(&serveraddr, 0, serverlen);
@@ -217,8 +246,8 @@ void proxy_res(int connfd) {
 			}
 
 			// check if server's page is cached
-			if (is_page_cached(host)) {
-				read_cache_page_from_file(host, connfd);
+			if (is_page_cached(filestruct)) {
+				read_cache_page_from_file(filestruct, connfd);
 			} else {
 				// create HTTP server socket
 				if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
@@ -229,8 +258,10 @@ void proxy_res(int connfd) {
 				if (connect(server_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
 					printf("**Error connecting to HTTP server @ %s.**\n", host);
 				} else { // connected to HTTP server
+					memset(&buf, 0, MAXBUF);
+
 					// create message to send to HTTP server
-					strcat(buf, http_request[0]);
+					strcpy(buf, http_request[0]);
 					strcat(buf, " ");
 					strcat(buf, http_request[1]);
 					strcat(buf, " ");
@@ -244,11 +275,12 @@ void proxy_res(int connfd) {
 					}
 
 					/* Send message back to client from server */
-					memset(&buf[0], 0, MAXBUF); // result buffer to use it
+					memset(&buf, 0, MAXBUF); // result buffer to use it
+					char new_url[100];
 					while ((n = recv(server_socket, buf, sizeof(buf), 0)) > 0) {
 						// printf("Data from server %s retrieved, sending back to client at socket %i\n", host, connfd);
 						// write to file (cache), while also sending to client
-						write_cache_page_to_file(host, buf, n);
+						write_cache_page_to_file(filestruct, buf, n);
 						send(connfd, buf, n, 0);
 					}
 					// close connection
@@ -259,7 +291,6 @@ void proxy_res(int connfd) {
 		} else httpError(buf, connfd, 400, http_request[2]); // request method
 	} else httpError(buf, connfd, 500, http_request[2]); // socket issues
 
-	memset(&buf[0], 0, MAXBUF);
 	shutdown(connfd, 0);
 	close(connfd);
 }
@@ -329,26 +360,25 @@ int blacklisted(char host[100]) {
 int is_page_cached(char host[100]) {
 	char filename[100] = "./page_caches/";
 	strcat(filename, host);
-	strcat(filename, ".txt");
 	struct stat buffer;
-	int exist = stat(filename, &buffer);
-	if (exist == 0) return 1; // exists
+	if (stat(filename, &buffer) == 0) return 1; // exists
 	return 0; // file doesn't exist
 }
 
+/* if page doesn't already exist, write to cache as returned to customer */
 void write_cache_page_to_file(char host[100], char buf[MAXBUF], int size) {
 	FILE *fp;
 	char *line = NULL;
 	size_t len = 0;
 	char filename[100] = "./page_caches/";
 	strcat(filename, host);
-	strcat(filename, ".txt");
 	fp = fopen(filename, "a");
 	strcat(buf, "\n");
 	fwrite(buf, 1, size, fp);
 	fclose(fp);
 }
 
+/* if cache file exists, return to client */
 void read_cache_page_from_file(char host[100], int connfd) {
 	FILE *fp;
 	char *line = NULL;
@@ -356,7 +386,6 @@ void read_cache_page_from_file(char host[100], int connfd) {
 	char buf[MAXBUF];
 	char filename[100] = "./page_caches/";
 	strcat(filename, host);
-	strcat(filename, ".txt");
 	fp = fopen(filename, "r");
 	// read in file contents and send to client
 	while((len = fread(buf, 1, sizeof(buf), fp)) > 0) {
@@ -365,6 +394,7 @@ void read_cache_page_from_file(char host[100], int connfd) {
 	fclose(fp);
 }
 
+/* make sure the necessary files and directories are present */
 void check_file_and_dirs_exist(){
 	// before anything, make sure the directory exists
 	struct stat st = {0};
@@ -382,10 +412,11 @@ void check_file_and_dirs_exist(){
 		fclose(fp);
 	}
 }
+
+/* look to see if any page caches need to be removed (beyond expiration) */
 void check_page_caches() {
 	/* look through each file in the directory (except '.' and '..')
-	 * and delete if past EXPIRATION timeframe
-	 */
+	 * and delete if past EXPIRATION timeframe */
 	DIR *FD = opendir("./page_caches/");
 	struct dirent *de;
 	struct stat filestat;
@@ -406,6 +437,7 @@ void check_page_caches() {
 	closedir(FD);
 }
 
+/* check if any hostnames need to be removed from list (past expiration date) */
 void check_hostname_caches() {
 	FILE *fp;
 	FILE *tmp;
@@ -435,7 +467,6 @@ void term(int signum) {
 
 /* Error handling for HTTP client requests */
 void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]) {
-	memset(&buf[0], 0, MAXLINE);
 	switch (error) {
 		case 400:
 			strcat(buf, httpVersion);
