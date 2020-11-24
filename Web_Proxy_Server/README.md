@@ -43,6 +43,7 @@ Example: `GET http://coolestwebsiteever.com HTTP/1.1`
 8. [HTTP status codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes)
 9. [HTTP version errors](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1)
 10. [Hostname resolving](https://www.binarytides.com/hostname-to-ip-address-c-sockets-linux/)
+11. [Reading File Dates](https://c-for-dummies.com/blog/?p=3004)
 
 <!-- CREATE PDF FROM MARKDOWN -->
 <!-- md2pdf README.md --highlight-style atom-one-dark --pdf-options '{ "format": "Letter", "margin": "20mm", "printBackground": true }' -->

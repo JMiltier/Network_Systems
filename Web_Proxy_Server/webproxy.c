@@ -24,7 +24,7 @@
 #define MAXLINE 8192		/* max text line length */
 #define MAXBUF 8192			/* max I/O buffer size */
 #define LISTENQ 1024		/* second argument to listen() */
-#define EXPIRATION 10		/* days before a cache is deleted */
+#define EXPIRATION 10 * (24 * 60 * 60)	/* days (first number) before a cache is deleted */
 
 volatile sig_atomic_t done = 0;
 
@@ -35,6 +35,7 @@ int blacklisted(char host[100]);
 int is_page_cached(char host[100]);
 void write_cache_page_to_file(char host[100], char url[100], int size);
 void read_cache_page_from_file(char host[100], int connfd);
+void check_file_and_dirs_exist();
 void check_page_caches();
 void check_hostname_caches();
 void term(int signum);
@@ -44,7 +45,7 @@ void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]);
  * main driver
  */
 int main(int argc, char **argv) {
-	int listenfd, *connfdp, port, timeout = 0;
+	int listenfd, *connfdp, port, timeout = 0, exp_check = 0;
 	struct sockaddr_in clientaddr;
 	socklen_t clientlen;
 	pthread_t tid;
@@ -73,11 +74,13 @@ int main(int argc, char **argv) {
 	// continuous listening of proxy server
 	listenfd = open_listenfd(port);
 	while (!done) {
-		connfdp = malloc(sizeof(int));
-		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
-		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
-		pthread_create(&tid, NULL, thread, connfdp);
-
+		// check for expiration times (caches older than a certain time)
+		if (!done && !exp_check) {
+			check_file_and_dirs_exist();
+			check_page_caches();
+			check_hostname_caches();
+			exp_check = 1;
+		}
 		// timeout setting
 		if (timeout) {
 			time(&end_t);
@@ -87,13 +90,12 @@ int main(int argc, char **argv) {
 				done = 1;
 			}
 		}
-
-		// check for expiration times (caches older than a certain time)
-		check_page_caches();
-		check_hostname_caches();
 		// do not check/purge blacklist, as these should be managed manually
+		connfdp = malloc(sizeof(int));
+		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
+		pthread_create(&tid, NULL, thread, connfdp);
 	}
-
 	// once while loop gracefully exits, close connections
 	shutdown(*connfdp, 0);
 	close(*connfdp);
@@ -171,7 +173,7 @@ void proxy_res(int connfd) {
 
 			memset(&serveraddr, 0, serverlen);
 			serveraddr.sin_family = AF_INET;
-			// serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+			//? serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 			serveraddr.sin_port = htons((int)port);
 
 			// check if hostname has already been resolved
@@ -180,7 +182,7 @@ void proxy_res(int connfd) {
 			char cache_ip[20];
 			host_cache_file = fopen("hostname_cache.txt", "r");
 			while (!feof(host_cache_file)) {
-				fscanf(host_cache_file, "%s %s %*s%*[^\n]", hostname, cache_ip);
+				fscanf(host_cache_file, "%s%s%*s%*[^\n]", hostname, cache_ip);
 				if (strcmp(host, hostname) == 0) {
 					strcpy(ip_addr, cache_ip);
 					break;
@@ -207,7 +209,7 @@ void proxy_res(int connfd) {
 			} else { // server IP in hostname cache
 				serveraddr.sin_addr.s_addr = inet_addr(ip_addr);
 			}
-			// printf("Hostname address resolved to: %s\n", inet_ntoa(serveraddr.sin_addr));
+			//? printf("Hostname address resolved to: %s\n", inet_ntoa(serveraddr.sin_addr));
 
 			// check for blacklisted hosts or IPs
 			if (blacklisted(host) || blacklisted(ip_addr)) {
@@ -217,9 +219,7 @@ void proxy_res(int connfd) {
 			// check if server's page is cached
 			if (is_page_cached(host)) {
 				read_cache_page_from_file(host, connfd);
-			}
-			// page not cached, retrieve it
-			else {
+			} else {
 				// create HTTP server socket
 				if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 					printf("**Error creating HTTP server socket.**\n");
@@ -230,19 +230,18 @@ void proxy_res(int connfd) {
 					printf("**Error connecting to HTTP server @ %s.**\n", host);
 				} else { // connected to HTTP server
 					// create message to send to HTTP server
-					// strcat(buf, http_request[0]);
-					// strcat(buf, " ");
-					// strcat(buf, http_request[1]);
-					// strcat(buf, " ");
-					// strcat(buf, http_request[2]);
-					// strcat(buf, "\r\n\r\n");
+					strcat(buf, http_request[0]);
+					strcat(buf, " ");
+					strcat(buf, http_request[1]);
+					strcat(buf, " ");
+					strcat(buf, http_request[2]);
+					strcat(buf, "\r\n\r\n");
 
 					// printf("request %s", buf);
 					// send the response from the HTTP client to the HTTP server
-					send(server_socket, http_request, strlen(buf), 0);
-					// if ( < 0) {
-					// 	httpError(buf, connfd, 404, http_request[2]); // error on send
-					// }
+					if (send(server_socket, buf, strlen(buf), 0) < 0) {
+						httpError(buf, connfd, 404, http_request[2]); // error on send
+					}
 
 					/* Send message back to client from server */
 					memset(&buf[0], 0, MAXBUF); // result buffer to use it
@@ -316,7 +315,6 @@ int blacklisted(char host[100]) {
 	char *line = NULL;
 	size_t len = 0;
 	fp = fopen("blacklist.txt", "r");
-
 	while (getline(&line, &len, fp) != -1) {
 		if (strcmp(host, line) == 0) {
 			fclose(fp);
@@ -345,7 +343,8 @@ void write_cache_page_to_file(char host[100], char buf[MAXBUF], int size) {
 	char filename[100] = "./page_caches/";
 	strcat(filename, host);
 	strcat(filename, ".txt");
-	fp = fopen(filename, "w");
+	fp = fopen(filename, "a");
+	strcat(buf, "\n");
 	fwrite(buf, 1, size, fp);
 	fclose(fp);
 }
@@ -366,26 +365,71 @@ void read_cache_page_from_file(char host[100], int connfd) {
 	fclose(fp);
 }
 
+void check_file_and_dirs_exist(){
+	// before anything, make sure the directory exists
+	struct stat st = {0};
+	FILE *fp;
+	if (stat("./page_caches", &st) == -1)
+		mkdir("./page_caches", 0700);
+
+	if (access("blacklist.txt", F_OK) == -1) {
+		fp = fopen("blacklist.txt", "w");
+		fclose(fp);
+	}
+
+	if (access("hostname_cache.txt", F_OK) == -1) {
+		fp = fopen("hostname_cache.txt", "w");
+		fclose(fp);
+	}
+}
 void check_page_caches() {
-	DIR *FD;
-	struct dirent *file;
-	FILE *FP;
+	/* look through each file in the directory (except '.' and '..')
+	 * and delete if past EXPIRATION timeframe
+	 */
+	DIR *FD = opendir("./page_caches/");
+	struct dirent *de;
 	struct stat filestat;
-	stat("./page_caches/www.ebay.com.txt", &filestat);
-	printf(" File birth time %s\n", ctime(&filestat.st_birthtime));
+	char filename[50];
+	while((de = readdir(FD)) != NULL) {
+		time_t rawtime;
+		time (&rawtime);
+		strcpy(filename, "./page_caches/");
+		strcat(filename, de->d_name);
+		stat(filename, &filestat);
+		if (strcmp(de->d_name, ".") && strcmp(de->d_name, "..")) {
+			time_t file_time = filestat.st_birthtime;
+			if((time(&rawtime) - file_time) > EXPIRATION) {
+				remove(filename);
+			}
+		}
+	}
+	closedir(FD);
 }
 
 void check_hostname_caches() {
 	FILE *fp;
+	FILE *tmp;
 	int file_time;
 	time_t rawtime;
-	time ( &rawtime );
-	fp = fopen("hostname_cache.txt", "a");
+	char *line = NULL;
+	size_t len;
+	fp = fopen("hostname_cache.txt", "r");
+	tmp = fopen("hostname_cache_tmp.txt", "a");
+	while ((getline(&line, &len, fp)) != -1) {
+		sscanf(line, "%*s %*s %i%*[^\n]", &file_time);
+		// file has not yet expired
+		if((time(&rawtime) - file_time) < EXPIRATION) {
+			fprintf(tmp, "%s", line);
+		}
+	}
+	fclose(tmp);
 	fclose(fp);
+	remove("hostname_cache.txt");
+	rename("hostname_cache_tmp.txt", "hostname_cache.txt");
 }
 
 /* Gracefully exit program (while loop) with Ctrl+C press */
-void term(int signum){
+void term(int signum) {
 	done = 1;
 }
 
