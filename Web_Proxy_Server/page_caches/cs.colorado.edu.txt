@@ -1,0 +1,16 @@
+HTTP/1.1 400 Bad Request
+Date: Tue, 24 Nov 2020 00:03:03 GMT
+Server: Apache/2.4.6 (Red Hat Enterprise Linux) OpenSSL/1.0.2k-fips
+Strict-Transport-Security: max-age=15768000
+Content-Length: 226
+Connection: close
+Content-Type: text/html; charset=iso-8859-1
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>400 Bad Request</title>
+</head><body>
+<h1>Bad Request</h1>
+<p>Your browser sent a request that this server could not understand.<br />
+</p>
+</body></html>

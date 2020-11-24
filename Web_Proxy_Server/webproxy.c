@@ -19,19 +19,26 @@
 #include <signal.h> 		/* to gracefully stop */
 #include <limits.h>
 #include <time.h> 			/* for time keeping, and cache timeout */
+#include <dirent.h> 		/* for reading directory */
 
-#define MAXLINE 8192 /* max text line length */
-#define MAXBUF 8192	 /* max I/O buffer size */
-#define LISTENQ 1024 /* second argument to listen() */
+#define MAXLINE 8192		/* max text line length */
+#define MAXBUF 8192			/* max I/O buffer size */
+#define LISTENQ 1024		/* second argument to listen() */
+#define EXPIRATION 10		/* days before a cache is deleted */
 
 volatile sig_atomic_t done = 0;
 
 int open_listenfd(int port);
 void *thread(void *vargp);
 void proxy_res(int n);
-void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]);
 int blacklisted(char host[100]);
+int is_page_cached(char host[100]);
+void write_cache_page_to_file(char host[100], char url[100], int size);
+void read_cache_page_from_file(char host[100], int connfd);
+void check_page_caches();
+void check_hostname_caches();
 void term(int signum);
+void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]);
 
 /*
  * main driver
@@ -80,6 +87,11 @@ int main(int argc, char **argv) {
 				done = 1;
 			}
 		}
+
+		// check for expiration times (caches older than a certain time)
+		check_page_caches();
+		check_hostname_caches();
+		// do not check/purge blacklist, as these should be managed manually
 	}
 
 	// once while loop gracefully exits, close connections
@@ -118,7 +130,7 @@ void proxy_res(int connfd) {
 
 	// connected
 	else if (socket_msg > 0) {
-		// parse request, while error checking (update from strtok to strsep, to handle empty strings and not error)
+		// parse request
 		http_request[0] = strtok(httpmsg, " \r\t\n"); // method
 		http_request[1] = strtok(NULL, " \r\t\n"); // url
 		http_request[2] = strtok(NULL, " \r\t\n"); // http version
@@ -168,7 +180,7 @@ void proxy_res(int connfd) {
 			char cache_ip[20];
 			host_cache_file = fopen("hostname_cache.txt", "r");
 			while (!feof(host_cache_file)) {
-				fscanf(host_cache_file, "%s %s%*[^\n]", hostname, cache_ip);
+				fscanf(host_cache_file, "%s %s %*s%*[^\n]", hostname, cache_ip);
 				if (strcmp(host, hostname) == 0) {
 					strcpy(ip_addr, cache_ip);
 					break;
@@ -181,16 +193,18 @@ void proxy_res(int connfd) {
 				// not resolved, so get the hostname and store it
 				resolve_hostname = gethostbyname(host);
 				if (resolve_hostname == NULL) {
-					perror("\nUnable to resolve hostname.\n");
+					printf("**Unable to resolve hostname: %s.**\n", host);
 					httpError(buf, connfd, 404, http_request[2]);
+				} else {
+					memcpy(&serveraddr.sin_addr, resolve_hostname->h_addr, resolve_hostname->h_length);
+					// write to hostname cache file
+					host_cache_file = fopen("hostname_cache.txt", "a");
+					fprintf(host_cache_file, "%s ", host);
+					fprintf(host_cache_file, "%s ", inet_ntoa(serveraddr.sin_addr));
+					fprintf(host_cache_file, "%li\n", time(&rawtime));
+					fclose(host_cache_file);
 				}
-				memcpy(&serveraddr.sin_addr, resolve_hostname->h_addr, resolve_hostname->h_length);
-				// write to hostname cache file
-				host_cache_file = fopen("hostname_cache.txt", "a");
-				fprintf(host_cache_file, "%s ", host);
-				fprintf(host_cache_file, "%s\n", inet_ntoa(serveraddr.sin_addr));
-				fclose(host_cache_file);
-			} else {
+			} else { // server IP in hostname cache
 				serveraddr.sin_addr.s_addr = inet_addr(ip_addr);
 			}
 			// printf("Hostname address resolved to: %s\n", inet_ntoa(serveraddr.sin_addr));
@@ -200,40 +214,53 @@ void proxy_res(int connfd) {
 				httpError(buf, connfd, 403, http_request[2]);
 			}
 
-			// create HTTP server socket
-			if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-				perror("\nError creating HTTP server socket.\n");
-			};
-
-			// connect to HTTP server
-			if (connect(server_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
-				perror("\nError connecting to HTTP server.\n");
+			// check if server's page is cached
+			if (is_page_cached(host)) {
+				read_cache_page_from_file(host, connfd);
 			}
+			// page not cached, retrieve it
+			else {
+				// create HTTP server socket
+				if ((server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+					printf("**Error creating HTTP server socket.**\n");
+				};
 
-			// create message to send to HTTP server
-			strcat(buf, http_request[0]);
-			strcat(buf, " ");
-			strcat(buf, http_request[1]);
-			strcat(buf, " ");
-			strcat(buf, http_request[2]);
-			strcat(buf, "\r\n\r\n");
+				// connect to HTTP server
+				if (connect(server_socket, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+					printf("**Error connecting to HTTP server @ %s.**\n", host);
+				} else { // connected to HTTP server
+					// create message to send to HTTP server
+					// strcat(buf, http_request[0]);
+					// strcat(buf, " ");
+					// strcat(buf, http_request[1]);
+					// strcat(buf, " ");
+					// strcat(buf, http_request[2]);
+					// strcat(buf, "\r\n\r\n");
 
-			// printf("request %s", buf);
-			// send the response from the HTTP client to the HTTP server
-			if (send(server_socket, buf, strlen(buf), 0) > 0) {
-				// printf("Message sent to server %s on socket %i\n", host, connfd);
-			} else httpError(buf, connfd, 404, http_request[2]); // sending data
+					// printf("request %s", buf);
+					// send the response from the HTTP client to the HTTP server
+					send(server_socket, http_request, strlen(buf), 0);
+					// if ( < 0) {
+					// 	httpError(buf, connfd, 404, http_request[2]); // error on send
+					// }
 
-			/* Handle message back from server */
-			memset(&buf[0], 0, sizeof(buf)); // result buffer to use it
-			while ((n = recv(server_socket, buf, sizeof(buf), 0)) > 0) {
-				// printf("Data from server %s retrieved, sending back to client at socket %i\n", host, connfd);
-				send(connfd, buf, n, 0);
+					/* Send message back to client from server */
+					memset(&buf[0], 0, MAXBUF); // result buffer to use it
+					while ((n = recv(server_socket, buf, sizeof(buf), 0)) > 0) {
+						// printf("Data from server %s retrieved, sending back to client at socket %i\n", host, connfd);
+						// write to file (cache), while also sending to client
+						write_cache_page_to_file(host, buf, n);
+						send(connfd, buf, n, 0);
+					}
+					// close connection
+					shutdown(connfd, 0);
+					close(connfd);
+				}
 			}
 		} else httpError(buf, connfd, 400, http_request[2]); // request method
 	} else httpError(buf, connfd, 500, http_request[2]); // socket issues
 
-	memset(&buf[0], 0, sizeof(buf));
+	memset(&buf[0], 0, MAXBUF);
 	shutdown(connfd, 0);
 	close(connfd);
 }
@@ -283,6 +310,85 @@ int open_listenfd(int port) {
 	return listenfd;
 } /* end open_listenfd */
 
+/* Checks if server hostname or IP is blacklisted */
+int blacklisted(char host[100]) {
+	FILE *fp;
+	char *line = NULL;
+	size_t len = 0;
+	fp = fopen("blacklist.txt", "r");
+
+	while (getline(&line, &len, fp) != -1) {
+		if (strcmp(host, line) == 0) {
+			fclose(fp);
+			return 1; // server is blacklisted
+		}
+	}
+	fclose(fp);
+	return 0; // server is not blacklisted
+}
+
+/* Checks if pages are cached, so as to not fetch them */
+int is_page_cached(char host[100]) {
+	char filename[100] = "./page_caches/";
+	strcat(filename, host);
+	strcat(filename, ".txt");
+	struct stat buffer;
+	int exist = stat(filename, &buffer);
+	if (exist == 0) return 1; // exists
+	return 0; // file doesn't exist
+}
+
+void write_cache_page_to_file(char host[100], char buf[MAXBUF], int size) {
+	FILE *fp;
+	char *line = NULL;
+	size_t len = 0;
+	char filename[100] = "./page_caches/";
+	strcat(filename, host);
+	strcat(filename, ".txt");
+	fp = fopen(filename, "w");
+	fwrite(buf, 1, size, fp);
+	fclose(fp);
+}
+
+void read_cache_page_from_file(char host[100], int connfd) {
+	FILE *fp;
+	char *line = NULL;
+	size_t len = 0;
+	char buf[MAXBUF];
+	char filename[100] = "./page_caches/";
+	strcat(filename, host);
+	strcat(filename, ".txt");
+	fp = fopen(filename, "r");
+	// read in file contents and send to client
+	while((len = fread(buf, 1, sizeof(buf), fp)) > 0) {
+		send(connfd, buf, len, 0);
+	}
+	fclose(fp);
+}
+
+void check_page_caches() {
+	DIR *FD;
+	struct dirent *file;
+	FILE *FP;
+	struct stat filestat;
+	stat("./page_caches/www.ebay.com.txt", &filestat);
+	printf(" File birth time %s\n", ctime(&filestat.st_birthtime));
+}
+
+void check_hostname_caches() {
+	FILE *fp;
+	int file_time;
+	time_t rawtime;
+	time ( &rawtime );
+	fp = fopen("hostname_cache.txt", "a");
+	fclose(fp);
+}
+
+/* Gracefully exit program (while loop) with Ctrl+C press */
+void term(int signum){
+	done = 1;
+}
+
 /* Error handling for HTTP client requests */
 void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]) {
 	memset(&buf[0], 0, MAXLINE);
@@ -315,25 +421,4 @@ void httpError(char buf[MAXLINE], int connfd, int error, char httpVersion[10]) {
 	send(connfd, buf, strlen(buf), 0);
 	shutdown(connfd, 0);
 	close(connfd);
-}
-
-int blacklisted(char host[100]) {
-	FILE *fp;
-	char *line = NULL;
-	size_t len = 0;
-	fp = fopen("blacklist.txt", "r");
-
-	while (getline(&line, &len, fp) != -1) {
-		if (strcmp(host, line) == 0) {
-			fclose(fp);
-			return 1; // host is blacklisted
-		}
-	}
-	fclose(fp);
-	return 0; // host is not blacklisted
-}
-
-/* Gracefully exit program (while loop) with Ctrl+C press */
-void term(int signum){
-	done = 1;
 }

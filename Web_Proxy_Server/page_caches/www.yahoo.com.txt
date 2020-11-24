@@ -1,0 +1,14 @@
+HTTP/1.1 301 Moved Permanently
+Date: Tue, 24 Nov 2020 00:12:10 GMT
+Connection: keep-alive
+Server: ATS
+Cache-Control: no-store, no-cache
+Content-Type: text/html
+Content-Language: en
+Content-Security-Policy: frame-ancestors 'self' https://*.techcrunch.com https://*.yahoo.com https://*.aol.com https://*.huffingtonpost.com https://*.oath.com https://*.search.yahoo.com https://*.search.aol.com https://*.search.huffpost.com https://*.verizonmedia.com https://*.publishing.oath.com https://*.autoblog.com; sandbox allow-forms allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox allow-presentation; report-uri https://csp.yahoo.com/beacon/csp?src=ats&site=frontpage&region=US&lang=en-US&device=&yrid=&partner=;
+X-Frame-Options: SAMEORIGIN
+X-XSS-Protection: 1; report="https://csp.yahoo.com/beacon/csp?src=fp-hpkp-www"
+Location: https://www.yahoo.com/
+Content-Length: 8
+
+redirect

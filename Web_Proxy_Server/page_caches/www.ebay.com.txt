@@ -1,0 +1,16 @@
+HTTP/1.0 400 Bad Request
+Server: AkamaiGHost
+Mime-Version: 1.0
+Content-Type: text/html
+Content-Length: 216
+Expires: Mon, 23 Nov 2020 21:14:53 GMT
+Date: Mon, 23 Nov 2020 21:14:53 GMT
+Connection: close
+
+<HTML><HEAD>
+<TITLE>Invalid URL</TITLE>
+</HEAD><BODY>
+<H1>Invalid URL</H1>
+The requested URL "http&#58;&#47;www&#46;ebay&#46;com", is invalid.<p>
+Reference&#32;&#35;9&#46;6fdac917&#46;1606166093&#46;0
+</BODY></HTML>
