@@ -1,0 +1,16 @@
+# mac/vscode
+.DS_Store
+.vscode
+
+# ignore any generated dummy code, txt, tar, gz, or pdf files
+*.pdf
+*.tar
+*.gz
+*.zip
+
+# make files
+webproxy
+
+# folder for zip
+/jo*/
+/page_caches/
