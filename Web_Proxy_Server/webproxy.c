@@ -24,7 +24,7 @@
 #define MAXLINE 8192		/* max text line length */
 #define MAXBUF 8192			/* max I/O buffer size */
 #define LISTENQ 1024		/* second argument to listen() */
-#define EXPIRATION 10 * (24 * 60 * 60)	/* days (first number) before a cache is deleted */
+#define EXPIRATION .1 * (24 * 60 * 60)	/* days (first number) before a cache is deleted */
 
 volatile sig_atomic_t done = 0;
 
@@ -140,19 +140,19 @@ void proxy_res(int connfd) {
 		http_request[1] = strtok(NULL, " \r\t"); // url
 		http_request[2] = strtok(NULL, " \r\t\n"); // http version
 
-		// printf("what's method? %s\n", http_request[0]);
-		// printf("what's url? %s\n", http_request[1]);
-		// printf("what's version? %s\n", http_request[2]);
+		printf("what's method? %s\n", http_request[0]);
+		printf("what's url? %s\n", http_request[1]);
+		printf("what's version? %s\n", http_request[2]);
 
-		// make sure formatting properly
-		if (strncmp(http_request[1], "http", 4) != 0 || strncmp(http_request[2], "HTTP", 4) != 0)
-			httpError(buf, connfd, 0, NULL);
+		// // make sure formatting properly
+		// if (strncmp(http_request[1], "http", 4) != 0 || strncmp(http_request[2], "HTTP", 4) != 0)
+		// 	httpError(buf, connfd, 0, NULL);
 
-		// check if http version is supported (not checking for HTTP/0.9)
-		if (strcmp(http_request[2], "HTTP/1.0\0") != 0 && strcmp(http_request[2], "HTTP/1.1\0") != 0
-				&& strcmp(http_request[2], "HTTP/2.0\0") != 0 && strcmp(http_request[2], "HTTP/2\0") != 0) {
-			httpError(buf, connfd, 505, http_request[2]);
-		}
+		// // check if http version is supported (not checking for HTTP/0.9)
+		// if (strcmp(http_request[2], "HTTP/1.0\0") != 0 && strcmp(http_request[2], "HTTP/1.1\0") != 0
+		// 		&& strcmp(http_request[2], "HTTP/2.0\0") != 0 && strcmp(http_request[2], "HTTP/2\0") != 0) {
+		// 	httpError(buf, connfd, 505, http_request[2]);
+		// }
 
 		// GET request from client
 		if (strcmp(http_request[0], "GET\0") == 0) {
