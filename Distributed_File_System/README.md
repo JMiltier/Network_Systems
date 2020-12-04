@@ -1,5 +1,5 @@
 # 🌐 Distributed File System
-A web proxy created using ANSI C capable of handling HTTP requests from clients to the HTTP servers. Typically the client would connect directly with the server, but useful to sometimes create/introduce an intermediate proxy. This proxy exists between the HTTP clients and HTTP servers, where the clients send HTTP requests to the proxy. Once receiving the request, the proxy forwards the request to the HTTP server. Then, the HTTP server sends a reponse back to the proxy, which in turn forwards that response to the HTTP client. This is advantageous for several reasons: performance, content filtering/transformation, and privacy. 
+For reliable and secure file storage, a file can be distributed across multiple systems/servers. One feature, for example, is that a client's file can be divided into pieces and stored on different servers. In return, that file can be returned even if one of the servers is offline.
 
 Proxy advantages outlined:
   **Performance**: Allows caching of frequently visited pages to reduce the extra time needed for creating a new connection to the HTTP server every time.
@@ -7,14 +7,22 @@ Proxy advantages outlined:
   **Privacy**: If the HTTP server tries to log information about the HTTP client, it can only get information about the proxy (not the actual client). Imagine the benefits of when there are multiple proxies involved in a route. Makes it incredibly hard to trace the orginator.
 
 ### Program
-Upon compiling and executing, the web proxy will listen for HTTP client requests on the designated port. The web proxy will only support HTTP GET requests, and return any errors appropriatly (Error 400, Error 500, etc.). The URL request that comes from the client is parsed into three parts:  
-    1. Requested host and port number (default port of 80 if port is not specified)
-    2. Requested path, used to access resources on the HTTP server.
-    3. An optional message body (may not be in every HTTP request)
+Four distributed file servers (DFS 1 - 4) are setup and run on a local machine, but using different ports. Then, a single distributed file system client (DFC) can upload and download from those servers. When the client wants to upload, it splits the file into 4 peices, makes 4 pairs of each piece (so the size is essentially doubled), and then uploads each pair to a differnt server. This creates file redundancy, since if any one server fails, the file can still be retrieved. Additionally, for authentication, the servers should be able to store usernames and passwords (in clear text) while also validating these credentials. 
+
+#### Deciding how to upload the pairs onto which server
+Depending on the MD5 hash value of the file, let x = MD5HASH(file) % 4
+Based on x, here are the upload options
+| x value | DFS1 | DFS2 | DFS3 | DFS4 |
+| :------ | :--- | :--- | :--- | :--- |
+| 0       | (1,2)| (2,3)| (3,4)| (4,1)|
+| 1       | (4,1)| (1,1)| (2,3)| (3,4)|
+| 2       | (3,4)| (4,1)| (1,2)| (2,4)|
+| 3       | (2,3)| (3,4)| (4,1)| (1,2)|
 
 ## ⚙️ SETUP
-#### Web server testing
-  - Launch the web proxy within a commonly used web browser (i.e. Chome, Firefox) and direct requests to the web proxy and port number. Example: [http://localhost:3000](http://localhost:3000).
+#### Client
+  - The client should run/load the configuration file, which contains a list of the DFS server addresses as well as their username and password.
+  > `dfc dfc.conf` 
 
 ## 📟 USE
 #### HTTP User (client) Commands
