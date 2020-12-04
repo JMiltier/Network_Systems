@@ -140,9 +140,9 @@ void proxy_res(int connfd) {
 		http_request[1] = strtok(NULL, " \r\t"); // url
 		http_request[2] = strtok(NULL, " \r\t\n"); // http version
 
-		printf("what's method? %s\n", http_request[0]);
-		printf("what's url? %s\n", http_request[1]);
-		printf("what's version? %s\n", http_request[2]);
+		// printf("what's method? %s\n", http_request[0]);
+		// printf("what's url? %s\n", http_request[1]);
+		// printf("what's version? %s\n", http_request[2]);
 
 		// make sure formatting properly
 		if (strncmp(http_request[1], "http", 4) != 0 || strncmp(http_request[2], "HTTP", 4) != 0)
