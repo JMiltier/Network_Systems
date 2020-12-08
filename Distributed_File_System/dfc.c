@@ -77,8 +77,7 @@ int main(int argc, char **argv) {
     printf("Please enter a command:"
            "\n  get <file_name>"
            "\n  put <filename>"
-           "\n  delete <filename>"
-           "\n  ls"
+           "\n  list"
            "\n  exit"
            "\n\n> ");
 
@@ -130,18 +129,6 @@ int main(int argc, char **argv) {
         printf("File '%s' sent.\n", filename);
       } else {
         printf("Unable to send file. File '%s' does not exist. Try again.\n", filename);
-      }
-
-    /******************************** delete functionality ********************************/
-    } else if (!strcmp(cmd, "delete")) {
-      rcv = 0;
-      sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
-      recvfrom(sockfd, &(rcv), sizeof(rcv), 0, &serveraddr, &serverlen);
-
-      if (rcv) {
-        printf("File '%s' deleted\n", filename);
-      } else {
-        printf("Unable to delete '%s' from server.\n", filename);
       }
 
     /******************************** ls functionality ********************************/
