@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <string.h>      /* for fgets */
 #include <strings.h>     /* for bzero, bcopy */
 #include <unistd.h>      /* for read, write */
@@ -17,11 +16,19 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <dirent.h> // for directory
+#include <fcntl.h> 			/* for open */
+#include <sys/types.h>  /* for open (UNIX)*/
+#include <sys/stat.h>		/* for open (UNIX)*/
+#include <signal.h> 		/* to gracefully stop */
+#include <limits.h>
+#include <time.h> 			/* for time keeping */
 
 #define BUFSIZE  1024
 #define MAXLINE  8192  /* max text line length */
 #define MAXBUF   8192  /* max I/O buffer size */
 #define LISTENQ  1024  /* second argument to listen() */
+
+volatile sig_atomic_t done = 0;
 
 //! error - wrapper for perror
 void error(char *msg) {
@@ -44,8 +51,8 @@ int main(int argc, char **argv) {
   int login = 0; // login tracker
 
   // check command line arguments
-  if (argc != 2) {
-    fprintf(stderr, "usage: %s <port>\n", argv[0]);
+  if (argc != 3) {
+    fprintf(stderr, "usage: %s <server> <port>\n", argv[0]);
     exit(1);
   }
   portno = atoi(argv[1]);
@@ -205,51 +212,203 @@ void * thread(void * vargp) {
     return NULL;
 }
 
+
+#define MAXLINE 8192 /* max text line length */
+#define MAXBUF 8192	 /* max I/O buffer size */
+#define LISTENQ 1024 /* second argument to listen() */
+#define TYPELENGTH 7
+#define WWW_SERVER_PATH "/www"
+
+
+int open_listenfd(int port);
+void echo(int connfd);
+void *thread(void *vargp);
+void error500(char buf[MAXLINE], int connfd);
+void term(int signum);
+void server_res(int n);
+char *getcwd(char *buf, size_t size);
+
+char *file_types[TYPELENGTH] = {"html", "txt", "png", "gif", "jpg", "css", "js"};
+char *content_types[TYPELENGTH] = {"text/html", "text/plain", "image/png", "image/gif",
+																	 "image/jpg", "text/css", "application/javascript"};
+
 /*
- * echo - read and echo text lines until client closes connection
+ * main driver
  */
-void echo(int connfd) {
-    size_t n;
-    char buf[MAXLINE];
-    char httpmsg[]="HTTP/1.1 200 Document Follows\r\nContent-Type:text/html\r\nContent-Length:32\r\n\r\n<html><h1>Hello World!</h1>";
+int main(int argc, char **argv) {
+	int listenfd, *connfdp, port;
+	struct sockaddr_in clientaddr;
+	socklen_t clientlen;
+	pthread_t tid;
 
-    n = read(connfd, buf, MAXLINE);
-    printf("server received the following request:\n%s\n",buf);
-    strcpy(buf,httpmsg);
-    printf("server returning a http message with the following content.\n%s\n",buf);
-    write(connfd, buf,strlen(httpmsg));
+	// check arguments
+	if (argc != 2) {
+		fprintf(stderr, "usage: %s <port>\n", argv[0]);
+		exit(0);
+	}
+	port = atoi(argv[1]);
 
+	// gracefully exit
+	struct sigaction action;
+	memset(&action, 0, sizeof(struct sigaction));
+	action.sa_handler = term;
+	sigaction(SIGINT, &action, NULL);
+
+	printf("Graceful exit: escape character is 'Ctrl+C'.\n");
+
+	// continuous listening of server
+	listenfd = open_listenfd(port);
+	while (!done) {
+		connfdp = malloc(sizeof(int));
+		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
+		pthread_create(&tid, NULL, thread, connfdp);
+	}
+}
+
+/*
+ * requests sent to server & server's response
+ */
+void server_res(int connfd) {
+	size_t n;
+	char buf[MAXLINE], httpmsg[MAXLINE], *http_request[3], *filetype;
+	int filedesc, socket_msg, filesize, filetype_index;
+	FILE file;
+
+	// set working directory
+	char cwd[MAXLINE];
+	getcwd(cwd, sizeof(cwd));
+	strcat(cwd, WWW_SERVER_PATH);
+
+	// receive message from socket
+	socket_msg = recv(connfd, httpmsg, MAXLINE, 0);
+
+	// idle response
+	time_t rawtime;
+	struct tm * timeinfo;
+	time ( &rawtime );
+  timeinfo = localtime ( &rawtime );
+	if (socket_msg == 0) {
+		printf("Connection has idled at %s. Refresh page to continue.\n", asctime (timeinfo));
+	}
+
+	// connected
+	else if (socket_msg > 0) {
+		http_request[0] = strtok(httpmsg, " \t\n");
+		if (strncmp(http_request[0], "GET\0", 4) == 0) {
+			http_request[1] = strtok(NULL, " \t");
+			http_request[2] = strtok(NULL, " \t\n");
+
+			// default landing page/route, no file requested
+			if (strncmp(http_request[1], "/\0", 2) == 0)
+				http_request[1] = "/index.html";
+
+			// for specific files, get file type (extension)
+			char *ext = strrchr(http_request[1], '.');
+			if (!ext) filetype = "";
+			else filetype = ext + 1;
+
+			// make sure incoming file types are supported
+			for (int i = 0; i < TYPELENGTH; i++)
+				if (strcmp(file_types[i], filetype) == 0) {
+					filetype_index = i;
+					break;
+				}
+
+			// get directory of file, with request URI
+			strcpy(buf, cwd);
+			strcpy(&buf[strlen(cwd)], http_request[1]);
+
+			// system call, open file and read in descriptor
+			if ((filedesc = open(buf, 0)) != -1) {
+				// get content type for the header
+				char *content_type = malloc(100);
+				strcpy(content_type, "Content-Type:");
+				/* using filetype index for supported content type */
+				strcat(content_type, content_types[filetype_index]);
+				strcat(content_type, "\r\n");
+
+				// set content length for the header
+				filesize = lseek(filedesc, 0L, SEEK_END);
+				lseek(filedesc, 0L, SEEK_SET);
+				char filesize_string[20];
+				sprintf(filesize_string, "%d", filesize);
+				char *content_length = malloc(100);
+				strcpy(content_length, "Content-Length:");
+				strcat(content_length, filesize_string);
+				strcat(content_length, "\r\n");
+
+				// send response
+				send(connfd, "HTTP/1.1 200 Document Follows\r\n", 31, 0);
+				send(connfd, content_type, strlen(content_type), 0);
+				send(connfd, content_length, strlen(content_length), 0);
+				send(connfd, "Connection: Keep-alive\r\n\r\n", 26, 0);
+				// write based on buffer size limit
+				while ((n = read(filedesc, buf, MAXBUF)) > 0)
+					write(connfd, buf, n);
+
+/** If any cases fail above, respond with Error 500 **/
+			} else error500(buf, connfd);
+		} else error500(buf, connfd);
+	} else error500(buf, connfd);
+
+	shutdown(connfd, 0);
+	close(connfd);
+}
+
+/* thread routine */
+void *thread(void *vargp) {
+	int connfd = *((int *)vargp);
+	pthread_detach(pthread_self());
+	free(vargp);
+	server_res(connfd);
+	close(connfd);
+	return NULL;
 }
 
 /*
  * open_listenfd - open and return a listening socket on port
  * Returns -1 in case of failure
  */
-int open_listenfd(int port){
-    int listenfd, optval=1;
-    struct sockaddr_in serveraddr;
+int open_listenfd(int port) {
+	int listenfd, optval = 1;
+	struct sockaddr_in serveraddr;
 
-    /* Create a socket descriptor */
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        return -1;
+	/* Create a socket descriptor */
+	if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+		return -1;
 
-    /* Eliminates "Address already in use" error from bind. */
-    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,
-                   (const void *)&optval , sizeof(int)) < 0)
-        return -1;
+	/* Eliminates "Address already in use" error from bind. */
+	if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval, sizeof(int)) < 0)
+		return -1;
 
-    /* listenfd will be an endpoint for all requests to port
+	/* listenfd will be an endpoint for all requests to port
        on any IP address for this host */
-    bzero((char *) &serveraddr, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serveraddr.sin_port = htons((unsigned short)port);
-    if (bind(listenfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
-        return -1;
+	bzero((char *)&serveraddr, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serveraddr.sin_port = htons((unsigned short)port);
+	if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+		return -1;
 
-    /* Make it a listening socket ready to accept connection requests */
-    if (listen(listenfd, LISTENQ) < 0)
-        return -1;
-    return listenfd;
+	/* Make it a listening socket ready to accept connection requests */
+	if (listen(listenfd, LISTENQ) < 0) {
+		perror("listenfd, listen fn\n");
+		return -1;
+	}
+
+	return listenfd;
 } /* end open_listenfd */
+
+/* Error 500 Internal Server Error handling */
+void error500(char buf[MAXLINE], int connfd) {
+	strcpy(buf, "HTTP/1.1 500 Internal Server Error");
+	strcat(buf, "\n");
+	write(connfd, buf, strlen(buf));
+}
+
+/* Gracefully exit program (while loop) */
+void term(int signum){
+	done = 1;
+}
 
