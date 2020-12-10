@@ -75,9 +75,9 @@ int main(int argc, char **argv) {
 
     // print command options
     printf("Please enter a command:"
-           "\n  get <file_name>"
-           "\n  put <filename>"
            "\n  list"
+           "\n  get <filename>"
+           "\n  put <filename>"
            "\n  exit"
            "\n\n> ");
 
@@ -91,8 +91,15 @@ int main(int argc, char **argv) {
     // if (n < 0)
     //   error("ERROR in sendto");
 
+    /******************************** ls functionality ********************************/
+    if (!strcmp(cmd, "ls")) {
+      char file_list[BUFSIZE];
+      sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+      recvfrom(sockfd, file_list, sizeof(file_list), 0, &serveraddr, &serverlen);
+      printf("%s\n", file_list);
+
     /******************************** get functionality ********************************/
-    if (!strcmp(cmd, "get")) {
+    } else if (!strcmp(cmd, "get")) {
       char fn[BUFSIZE];
 
       sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);

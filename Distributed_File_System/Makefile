@@ -1,8 +1,9 @@
 # --------------------------------------------------------
 # Makefile - versitility to use again for C or C++ files
-# 'make'            builds executable targets
-# 'make webproxy'   creates webserver executable object
-# 'make clean'      removes all .o and executable files
+# 'make'        builds executable targets
+# 'make DFC'    creates DF client executable object
+# 'make DFS'    creates DF server executable object
+# 'make clean'  removes all .o and executable files
 # --------------------------------------------------------
 
 # the compiler: gcc for C program, define as g++ for C++
@@ -14,15 +15,20 @@ CC = gcc
 #  -w			inhibits all warning messages
 CFLAGS = -w
 
-WEBSVR=webproxy
-WEBSVRSRC=webproxy.c
+DFC=dfc
+DFCSRC=dfc.c
+DFS=dfs
+DFSSRC=dfs.c
 
 .PHONY: clean all
 
-all: clean $(WEBSVR)
+all: clean $(DFC) $(DFS)
 
-$(WEBSVR): $(WEBSVRSRC)
-	$(CC) $(CFGLAGS) $(WEBSVRSRC) -o $(WEBSVR)
+$(DFC): $(DFCSRC)
+	$(CC) $(CFGLAGS) $(DFCSRC) -o $(DFC)
+
+$(DFS): $(DFSSRC)
+	$(CC) $(CFGLAGS) $(DFSSRC) -o $(DFS)
 
 clean:
-	rm -rf $(WEBSVR)
+	rm -rf $(DFC) $(DFS)
