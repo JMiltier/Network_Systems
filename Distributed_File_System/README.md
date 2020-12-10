@@ -39,9 +39,11 @@ Example: `GET http://coolestwebsiteever.com HTTP/1.1`
 
 ### Executing
   ##### Distributed File System Client
+  **Using modified UDP_Sockets client files**
   Once web proxy object is created, run `./webproxy <PORT>` in the terminal/console from the root directory of the executable file. In a separate console, run `telnet localhost <PORT>`, where *<PORT>* is the port assigned in the webproxy. Once loaded, requests can be made to the proxy using the HTTP User (client) Commands format above.
 
   ##### Distributed File System Server
+  **Using a combination of UDP_Sockets (for user command handling) and HTTP_Web_Server (for multiple users)**
   Once the dfs object is created, run each of the *four* servers with different ports.
   `./dfs /DFS1 10001 &`
   `./dfs /DFS2 10002 &`
