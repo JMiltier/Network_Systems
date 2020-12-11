@@ -45,10 +45,11 @@ Example: `GET http://coolestwebsiteever.com HTTP/1.1`
   ##### Distributed File System Server
   **Using a combination of UDP_Sockets (for user command handling) and HTTP_Web_Server (for multiple users)**
   Once the dfs object is created, run each of the *four* servers with different ports.
-  `./dfs /DFS1 10001 &`
-  `./dfs /DFS2 10002 &`
-  `./dfs /DFS3 10003 &`
-  `./dfs /DFS4 10004 &`
+  `./dfs /DFS1 10001 &`  
+  `./dfs /DFS2 10002 &`  
+  `./dfs /DFS3 10003 &`  
+  `./dfs /DFS4 10004 &`  
+  Note: only use the `&` is you want to push the process to the background. Will need to manually kill the process for each (since running in a loop). Otherwise, continuous/multiple executions could cause high CPU/memory usage, resulting in sluggish results.
 
 #### Additional files:
   - blacklist.txt: list of blocked hostnames and IPs that are not allowed
