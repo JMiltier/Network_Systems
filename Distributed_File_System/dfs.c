@@ -23,14 +23,13 @@
 #include <limits.h>
 #include <time.h> 			/* for time keeping */
 
-
-#define BUFSIZE     1024
+#define BUFSIZE     4096
 #define MAXLINE     8192           /* max text line length */
 #define MAXBUF      8192           /* max I/O buffer size */
 #define LISTENQ     1024           /* second argument to listen() */
 #define TYPELENGTH  7              /* number of file types */
 #define CONF_FILE   "dfs.conf"   /* server config file */
-#define USERS       10             /* static number of users */
+#define USERS       1             /* static number of users */
 
 int login_auth = 0; // login tracker
 char username[USERS][30], password[USERS][30];
@@ -51,18 +50,14 @@ char *getcwd(char *buf, size_t size);
 void error(char *msg);
 
 int main(int argc, char **argv) {
-  int sockfd; // socket
-  int port; // port to listen on
   socklen_t clientlen; // byte size of client's address
-  struct sockaddr_in serveraddr; // server's addr
   struct sockaddr_in clientaddr; // client addr
-  struct hostent *hostp; // client host info
   char buf[BUFSIZE]; // message buf
-  char *hostaddrp, *server_name; // dotted decimal host addr string
+  char *server_name; // dotted decimal host addr string
   int optval; // flag value for setsockopt
   int n, snd; // message byte size
   char cmd_in[10], filename_in[30]; // incoming command and filename
-  int listenfd, *connfdp;
+  int listenfd, *connfdp, port;
 	pthread_t tid;
 
   // check command line arguments
@@ -79,9 +74,6 @@ int main(int argc, char **argv) {
 	action.sa_handler = term;
 	sigaction(SIGINT, &action, NULL);
 
-  // main loop: wait for a datagram, then echo it
-  clientlen = sizeof(clientaddr);
-
   // read configuration file (usernames, passwords)
   parse_config_file();
 
@@ -90,15 +82,24 @@ int main(int argc, char **argv) {
   printf("Server listening on port %i.\n", port);
 	printf("Graceful exit: escape character is 'Ctrl+C'.\n");
 
-  // // continuous listening of server
-	listenfd = open_listenfd(port);
+  // continuous listening of server
+	if ((listenfd = open_listenfd(port)) < 0)
+    printf("Failure to open listening port.\n");
+
+  // main loop: wait for a datagram, then echo it
+  clientlen = sizeof(clientaddr);
+
 	while (!done) {
 		connfdp = malloc(sizeof(int));
-		*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen);
+		if((*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen)) < 0)
+      printf("accept failure\n");
 		// printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
 		pthread_create(&tid, NULL, thread, connfdp);
 	}
-  return 0;
+  // once while loop gracefully exits, close connections
+	shutdown(*connfdp, 0);
+	close(*connfdp);
+	close(listenfd);
 }
 
 
@@ -107,51 +108,52 @@ int main(int argc, char **argv) {
  */
 void server_res(int connfd) {
 	size_t n;
-	char buf[MAXLINE], httpmsg[MAXLINE], *filetype;
+	char buf[BUFSIZE], auth[MAXLINE], *filetype;
   char cmd_in[10], filename_in[30]; // incoming command and filename
+  char user_in[30], pass_in[30];
 	int filedesc, socket_msg, filesize, filetype_index;
+  struct sockaddr_in clientaddr; // client addr
+  socklen_t clientlen; // byte size of client's address
 	FILE file;
 
-	// set working directory
-	char cwd[MAXLINE];
-	getcwd(cwd, sizeof(cwd));
-	strcat(cwd, CONF_FILE);
-
 	// receive message from socket
-	socket_msg = recv(connfd, httpmsg, MAXLINE, 0);
+	socket_msg = recv(connfd, auth, MAXLINE, 0);
+
+  printf("auth %s\n", auth);
+
+  // receive and validate user
+  sscanf(auth, "%s %s[^\n]", user_in, pass_in);
+  printf("u: %s p: %s", user_in, pass_in);
+  printf("True? %i", strcmp(username[0], user_in));
+  if (strcmp(username[0], user_in) == 0 && strcmp(password[0], pass_in) == 0) {
+    printf("%s authenticated.\n", user_in);
+    login_auth = 1;
+  } else {
+    printf("Invalid user.\n");
+  }
 
 	// idle response
 	time_t rawtime;
 	struct tm * timeinfo;
 	time ( &rawtime );
   timeinfo = localtime ( &rawtime );
-	if (socket_msg == 0) {
+	if (socket_msg == 0)
 		printf("Connection has idled at %s. Refresh page to continue.\n", asctime (timeinfo));
-	}
+	else if (socket_msg < 0)
+    printf("Socket error.\n");
 
 	// connected
 	else if (socket_msg > 0) {
+    printf("Client connected\n");
     buf[0] = '\0';
     cmd_in[0] = '\0';
     filename_in[0] = '\0';
 
-    // recvfrom: receive a UDP datagram from a client
-    bzero(buf, BUFSIZE);
-    n = read(connfd, buf, BUFSIZE);
-    printf("Reading in credentials");
-    if (n < 0)
-      error("ERROR in recvfrom");
-
-    // check for valid credentials
-    if(!login_auth) {
-      sscanf(buf, "%s %s", cmd_in, filename_in);
-      if (username[0] == cmd_in && password[0] == password[0]) {
-        printf("User authenticated!\n");
-        login_auth = 1;
-      } else {
-        printf("Bad username and password\n");
-      }
-    } else if (login_auth) {
+       // user has authenticated
+    if (login_auth) {
+       // recvfrom: receive a UDP stream from a client
+      if((recvfrom(connfd, buf, BUFSIZE, 0, (struct sockaddr *) &clientaddr, (socklen_t *)sizeof(clientaddr))) < 0)
+        printf("ERROR in recvfrom\n");
       // format for server
       sscanf(buf, "%s %s", cmd_in, filename_in);
       /* ******* list command handling ******* */
@@ -173,27 +175,27 @@ void server_res(int connfd) {
         write(connfd, files, BUFSIZE);
 
       /* ******* get command handling ******* */
-      } else if (!strcmp(cmd_in, "get")) {
-        char data[BUFSIZE];
-        if (access(filename_in, F_OK) != -1) {
-          // open file to send
-          FILE *file = fopen(filename_in, "rb");
-          fseek(file, 0L, SEEK_END);
-          long int file_size = ftell(file);
-          fseek(file, 0, SEEK_SET);
-          fread(data, strlen(file)+1, file_size, file);
-          fclose(file);
-          write(connfd, &(data), file_size);
-        } else {
-          data[0] = '\0';
-          write(connfd, &(data), 0);
-        }
+      // } else if (!strcmp(cmd_in, "get")) {
+      //   char data[BUFSIZE];
+      //   if (access(filename_in, F_OK) != -1) {
+      //     // open file to send
+      //     FILE *file = fopen(filename_in, "rb");
+      //     fseek(file, 0L, SEEK_END);
+      //     long int file_size = ftell(file);
+      //     fseek(file, 0, SEEK_SET);
+      //     fread(data, strlen(file)+1, file_size, file);
+      //     fclose(file);
+      //     write(connfd, &(data), file_size);
+      //   } else {
+      //     data[0] = '\0';
+      //     write(connfd, &(data), 0);
+      //   }
 
-      /* ******* put command handling ******* */
-      } else if (!strcmp(cmd_in, "put")) {
-        FILE *file = fopen(filename_in, "wb");
-        fwrite(&file, 1, strlen(file), file);
-        fclose(file);
+      // /* ******* put command handling ******* */
+      // } else if (!strcmp(cmd_in, "put")) {
+      //   FILE *file = fopen(filename_in, "wb");
+      //   fwrite(&file, 1, strlen(file), file);
+      //   fclose(file);
 
       /* ******* exit command handling ******* */
       } else if (!strcmp(cmd_in,"exit")) {
@@ -201,7 +203,7 @@ void server_res(int connfd) {
         // exit(0); // probably shouldn't allow from client side
 
       /* ******* trash command handling ******* */
-      } else printf("Invalid command.\n");
+      } else printf("Invalid command from client.\n");
     }
   }
 	shutdown(connfd, 0);
@@ -212,9 +214,9 @@ void server_res(int connfd) {
 void *thread(void *vargp) {
 	int connfd = *((int *)vargp);
 	pthread_detach(pthread_self());
-	free(vargp);
 	server_res(connfd);
 	close(connfd);
+	free(vargp);
 	return NULL;
 }
 
@@ -227,12 +229,16 @@ int open_listenfd(int port) {
 	struct sockaddr_in serveraddr;
 
 	/* Create a socket descriptor */
-	if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    error("listenfd, error opening socket\n");
 		return -1;
+  }
 
 	/* Eliminates "Address already in use" error from bind. */
-	if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval, sizeof(int)) < 0)
+	if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval, sizeof(int)) < 0) {
+    error("setsockopt fn\n");
 		return -1;
+  }
 
 	/* listenfd will be an endpoint for all requests to port
        on any IP address for this host */
@@ -240,12 +246,14 @@ int open_listenfd(int port) {
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serveraddr.sin_port = htons((unsigned short)port);
-	if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+	if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+    error("unable to bind socket\n");
 		return -1;
+  }
 
 	/* Make it a listening socket ready to accept connection requests */
 	if (listen(listenfd, LISTENQ) < 0) {
-		perror("listenfd, listen fn\n");
+		error("listenfd, listen fn\n");
 		return -1;
 	}
 
