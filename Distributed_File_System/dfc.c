@@ -18,6 +18,8 @@
 #include <sys/types.h>   /* for open (UNIX)*/
 #include <sys/stat.h>    /* for open (UNIX)*/
 #include <signal.h> 		/* to gracefully stop */
+// #include <openssl/md5.h> /* MD5 for Linux */
+#include <CommonCrypto/CommonDigest.h> /* MD5 for macOS */
 
 #define BUFSIZE 4096
 #define SVRS 4
@@ -28,15 +30,21 @@ void term(int signum);
 void error(char *msg);
 
 int main(int argc, char **argv) {
-  int sockfd[SVRS];
-  char *n;
+  int sockfd[SVRS], MD5HASH, user_auth = 0;
+  long int file_size;
   struct sockaddr_in serveraddr[SVRS]; // server sockets (now have 4)
   struct stat st = {0}; // for creating user file structures
   // struct hostent *server[SVRS];
   char buf[BUFSIZE], cmd[10], filename[50], *config_file;
   char DFS[SVRS][1], S_IP[SVRS][16], S_PORT[SVRS][6], user[30], pass[30];
-  int user_auth = 0;
-
+  unsigned char digest[CC_MD5_DIGEST_LENGTH];
+  CC_MD5_CTX context;
+  CC_MD5_Init(&context);
+  int CC_MD5_Table[SVRS][SVRS*2] =
+    {{1,2,2,3,3,4,4,1},
+     {4,1,1,2,2,3,3,4},
+     {3,4,4,1,1,2,2,3},
+     {2,3,3,4,4,1,1,2}};
 
   // check command line arguments
   if (argc != 2) { fprintf(stderr,"usage: %s <config_file>\n", argv[0]); EXIT_FAILURE; }
@@ -106,7 +114,6 @@ int main(int argc, char **argv) {
     else {
       buf[0] = '\0';
       read(sockfd[i], buf, BUFSIZE);
-      printf("authned? %i\n", strcmp(buf, "auth"));
       if (strcmp(buf, "auth") > 0)
         user_auth = 1;
     }
@@ -132,7 +139,7 @@ int main(int argc, char **argv) {
     scanf(" %[^\n]%*c", buf); // get line, ignoring the newline <enter> and empty <enter>
     sscanf(buf, "%s %s", cmd, filename); // assign command and filename
 
-    /* ******* list command handling ******* */
+    /* ************** list command handling ************** */
     if (!strcmp(cmd, "list")) {
       for (int i=0; i < SVRS; i++) {
         char file_list[BUFSIZE];
@@ -142,7 +149,7 @@ int main(int argc, char **argv) {
         printf("%s", file_list);
       }
       done = 1;
-    /* ******* get command handling ******* */
+    /* ************** get command handling ************** */
     } else if (!strcmp(cmd, "get")) {
       char fn[BUFSIZE];
       if (strncmp(filename, "/", 1) != 0) strcat(cwd, "/");
@@ -163,32 +170,38 @@ int main(int argc, char **argv) {
       }
       done = 1;
 
-    /* ******* put command handling ******* */
+    /* ************** put command handling ************** */
     } else if (!strcmp(cmd, "put")) {
       char data[BUFSIZE];
-      // first, check if filename exists
-      if (access(filename, F_OK) != -1) {
+      // first, check if file exists
+      if (access(cwd, F_OK) != -1) {
         // open file to send
-        FILE *file = fopen(filename, "rb");
+        FILE *file = fopen(cwd, "rb");
         fseek(file, 0L, SEEK_END);
-        //determine if file size is bigger than buffer size
-        long int file_size = ftell(file);
+        file_size = ftell(file);
+        fseek(file, 0L, SEEK_SET);
         printf("filesize %li\n", file_size);
         int packets = ceil(file_size / BUFSIZE);
         printf("packets %i\n", packets);
+        while ((read_in = getline(&line, &len, file)) != -1) {
+          CC_MD5_Update(&context, line, (CC_LONG)len);
+        }
+        CC_MD5_Final(digest, &context);
+        const char* string = "Hello World";
+        for (size_t i=0; i<CC_MD5_DIGEST_LENGTH; ++i)
+          printf("%.2x", digest[i]);
+        printf("hash mod: %i\n", abs(CC_MD5(string,(CC_LONG)strlen(string), digest))%4);
         fread(data, file_size, BUFSIZE, file);
-
         for(int i=0; i < SVRS; i++) {
-          // printf("data %s\n", data);
           sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]));
-          fclose(file);
           printf("File '%s' sent.\n", filename);
         }
+        fclose(file);
       } else {
         printf("Unable to send file. File '%s' does not exist. Try again.\n", filename);
       } done = 1;
 
-    /* ******* exit command handling ******* */
+    /* ************** exit command handling ************** */
     } else if (!strcmp(cmd, "exit")) {
       for (int i=0; i < SVRS; i++) {
         sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr[i]));
@@ -196,7 +209,7 @@ int main(int argc, char **argv) {
       printf("Goodbye!\n\n");
       done = 1;
 
-    /* ******* garbage command handling ******* */
+    /* ************** garbage command handling ************** */
     } else {
       // concat, to also have a space (since concat() won't include the space)
       *buf = *cmd + *filename;

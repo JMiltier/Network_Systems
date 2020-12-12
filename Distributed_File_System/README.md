@@ -10,8 +10,8 @@ Based on x, here are the upload options
 | x value | DFS1 | DFS2 | DFS3 | DFS4 |
 | :------ | :--- | :--- | :--- | :--- |
 | 0       | (1,2)| (2,3)| (3,4)| (4,1)|
-| 1       | (4,1)| (1,1)| (2,3)| (3,4)|
-| 2       | (3,4)| (4,1)| (1,2)| (2,4)|
+| 1       | (4,1)| (1,2)| (2,3)| (3,4)|
+| 2       | (3,4)| (4,1)| (1,2)| (2,3)|
 | 3       | (2,3)| (3,4)| (4,1)| (1,2)|
 
 ## ⚙️ SETUP
@@ -65,6 +65,8 @@ Example: `get file1.txt`
 11. [Reading File Dates](https://c-for-dummies.com/blog/?p=3004)
 12. [write()](http://codewiki.wikidot.com/c:system-calls:write) too many issue with send
 13. [read()](http://codewiki.wikidot.com/c:system-calls:read) ditto with recv
+14. [MD5 hash of file Linux](https://stackoverflow.com/questions/10324611/how-to-calculate-the-md5-hash-of-a-large-file-in-c)
+15. [MD5 hash of file macOS](https://stackoverflow.com/questions/41603586/xcode-c-md5-hash)
 
 <!-- CREATE PDF FROM MARKDOWN -->
 <!-- md2pdf README.md --highlight-style atom-one-dark --pdf-options '{ "format": "Letter", "margin": "20mm", "printBackground": true }' -->

@@ -163,6 +163,10 @@ void server_res(int connfd) {
       error("ERROR in recvfrom");
     sscanf(buf, "%s %s", cmd_in, filename_in);
 
+    // format the filename_in to point to right spot
+    if (strncmp(filename_in, "/", 1) != 0) strcat(cwd, "/");
+    strcat(cwd, filename_in);
+
     // user has authenticated
     if (login_auth == 1) {
       // format for server
@@ -173,12 +177,12 @@ void server_res(int connfd) {
         char file_list[BUFSIZE];
         char files[BUFSIZE] = "";
         int i = 2;
-        do {
+        while (i < n) {
           sprintf(file_list, "%s\n", namelist[i]->d_name);
           free(namelist[i]);
           strcat(files, file_list);
           i++;
-        } while (i < n);
+        }
         free(namelist);
         // return file list to client
         // sendto(connfd, files, BUFSIZE, 0, (struct sockaddr *) &clientaddr, clientlen);
@@ -187,9 +191,6 @@ void server_res(int connfd) {
       /* ******* get command handling ******* */
       } else if (!strcmp(cmd_in, "get")) {
         char data[BUFSIZE];
-        if (strncmp(filename_in, "/", 1) != 0)
-          strcat(cwd, "/");
-        strcat(cwd, filename_in);
         if (access(cwd, F_OK) != -1) {
           // open file to send
           FILE *file = fopen(cwd, "rb");
