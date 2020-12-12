@@ -15,19 +15,6 @@ Based on x, here are the upload options
 | 3       | (2,3)| (3,4)| (4,1)| (1,2)|
 
 ## ⚙️ SETUP
-#### Client
-  - The client should run/load the configuration file, which contains a list of the DFS server addresses as well as their username and password.
-  > `dfc dfc.conf` 
-
-## 📟 USE
-#### UDP User (client) Commands
-  1. `list` - lists out all files in the current directory
-  1. `get <file_name>` - copies specified *file_name* **from** the server
-  2. `put <file_name>` - copies specified *file_name* **to** the server
-  5. `exit` - exits out of client console
-  6. Any command not listed above will loop back to available commands.
-Example: `get file1.txt`
-
 ### Compiling
   Note: If zipped, first unzip file before proceeding. `tar -zxvf <zipfile>`
   1. From root directory, run `make` from the terminal. This will generate two executable objects called *dfc* and *dfs*. Follow steps in next section for execution.
@@ -36,6 +23,7 @@ Example: `get file1.txt`
 ### Executing
   ##### Distributed File System Client
   **Using modified UDP_Sockets client files**
+  The client should run/load the configuration file, which contains a list of the DFS server addresses as well as their username and password.
   Once the client's distributed file system object is created, run `./dfc <dfc config file>` in the terminal/console from the root directory of the executable file.
 
   ##### Distributed File System Server
@@ -46,10 +34,23 @@ Example: `get file1.txt`
   `./dfs /DFS3 10003 &`  
   `./dfs /DFS4 10004 &`  
   Note: only use the `&` is you want to push the process to the background. Will need to manually kill the process for each (since running in a loop). Otherwise, continuous/multiple executions could cause high CPU/memory usage, resulting in sluggish results.
+  
+## 📟 USE
+#### UDP User (client) Commands
+  1. `list` - lists out all files in the current directory
+  1. `get <file_name>` - copies specified *file_name* **from** the server
+  2. `put <file_name>` - copies specified *file_name* **to** the server
+  5. `exit` - exits out of client console
+  6. Any command not listed above will loop back to available commands.
+Example: `get file1.txt`
 
-#### Other files:
-  - dfc.conf - configuration file for client
-  - dfs.conf - configuration file for servers
+## Code Organization
+#### 📁 Files
+  1. dfc.c    - functionality for client
+  2. dfc.conf - configuration file for client
+  3. dfs.c    - functionality for client
+  4. dfs.conf - configuration file for servers  
+  Note: Additional files are created upon code execution. Will need to add files to folders. 
 
 #### Resources
 1. [Socket - accept](https://man7.org/linux/man-pages/man2/accept.2.html)
