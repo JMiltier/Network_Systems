@@ -63,6 +63,8 @@ Example: `get file1.txt`
 9. [HTTP version errors](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1)
 10. [Hostname resolving](https://www.binarytides.com/hostname-to-ip-address-c-sockets-linux/)
 11. [Reading File Dates](https://c-for-dummies.com/blog/?p=3004)
+12. [write()](http://codewiki.wikidot.com/c:system-calls:write) too many issue with send
+13. [read()](http://codewiki.wikidot.com/c:system-calls:read) ditto with recv
 
 <!-- CREATE PDF FROM MARKDOWN -->
 <!-- md2pdf README.md --highlight-style atom-one-dark --pdf-options '{ "format": "Letter", "margin": "20mm", "printBackground": true }' -->

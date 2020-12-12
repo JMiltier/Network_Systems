@@ -32,6 +32,7 @@
 #define USERS       2              /* static number of users */
 
 int login_auth = 0; // login tracker
+char server_name[10]; // file directory
 char username[USERS][30], password[USERS][30];
 char *file_types[TYPELENGTH] = {"html", "txt", "png", "gif", "jpg", "css", "js"};
 char *content_types[TYPELENGTH] = {"text/html", "text/plain", "image/png", "image/gif",
@@ -53,7 +54,6 @@ int main(int argc, char **argv) {
   socklen_t clientlen; // byte size of client's address
   struct sockaddr_in clientaddr; // client addr
   char buf[BUFSIZE]; // message buf
-  char *server_name; // dotted decimal host addr string
   int optval; // flag value for setsockopt
   int n, snd; // message byte size
   char cmd_in[10], filename_in[30]; // incoming command and filename
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "usage: %s <server> <port>\n", argv[0]);
     exit(1);
   }
-  server_name = argv[1];
+  strcpy(server_name, argv[1]);
   port = atoi(argv[2]);
 
   // gracefully exit
@@ -114,16 +114,29 @@ void server_res(int connfd) {
   int filedesc, socket_msg, filesize, filetype_index;
   struct sockaddr_in clientaddr; // client addr
   socklen_t clientlen; // byte size of client's address
+  struct stat st = {0}; // for creating user file structures
   FILE file;
+
+  // set working directory
+	char cwd[MAXLINE];
+	getcwd(cwd, sizeof(cwd));
+  if (strncmp(server_name, "/", 1) != 0)
+    strcat(cwd, "/");
+	strcat(cwd, server_name);
 
   // receive message from socket
   socket_msg = recv(connfd, auth, MAXLINE, 0);
 
-  // receive and validate user
+  // receive and validate user; add user folder if validated
   sscanf(auth, "%s %s[^\n]", user_in, pass_in);
   if (strcmp(username[0], user_in) == 0 && strcmp(password[0], pass_in) == 0) {
     printf("** %s authenticated. **\n", user_in);
     login_auth = 1;
+    strcat(cwd, "/");
+    strcat(cwd, user_in);
+    if (stat(cwd, &st) == -1)
+      mkdir(cwd, 0700);
+    write(connfd, "authed", 6);
   } else printf("Invalid user.\n");
 
   // idle response
@@ -151,12 +164,12 @@ void server_res(int connfd) {
     sscanf(buf, "%s %s", cmd_in, filename_in);
 
     // user has authenticated
-    if (login_auth) {
+    if (login_auth == 1) {
       // format for server
       /* ******* list command handling ******* */
       if (!strcmp(cmd_in, "list")) {
         struct dirent **namelist;
-        n = scandir("./DFS3", &namelist, NULL, alphasort);
+        n = scandir(cwd, &namelist, NULL, alphasort);
         char file_list[BUFSIZE];
         char files[BUFSIZE] = "";
         int i = 2;
@@ -168,7 +181,8 @@ void server_res(int connfd) {
         }
         free(namelist);
         // return file list to client
-        sendto(connfd, files, BUFSIZE, 0, (struct sockaddr *) &clientaddr, clientlen);
+        // sendto(connfd, files, BUFSIZE, 0, (struct sockaddr *) &clientaddr, clientlen);
+        write(connfd, files, BUFSIZE);
 
       /* ******* get command handling ******* */
       } else if (!strcmp(cmd_in, "get")) {
@@ -179,7 +193,7 @@ void server_res(int connfd) {
           fseek(file, 0L, SEEK_END);
           long int file_size = ftell(file);
           fseek(file, 0, SEEK_SET);
-          fread(data, strlen(file)+1, file_size, file);
+          fread(data, BUFSIZE, file_size, file);
           fclose(file);
           write(connfd, &(data), file_size);
         } else {
@@ -190,7 +204,7 @@ void server_res(int connfd) {
       // /* ******* put command handling ******* */
       } else if (!strcmp(cmd_in, "put")) {
         FILE *file = fopen(filename_in, "wb");
-        fwrite(&file, 1, strlen(file), file);
+        fwrite(&file, 1, BUFSIZE, file);
         fclose(file);
 
       /* ******* exit command handling ******* */
@@ -202,7 +216,7 @@ void server_res(int connfd) {
 
       /* ******* trash command handling ******* */
       } else printf("Invalid command from client.\n");
-    }
+    } else write(connfd, "Not authorized.", 0);
   }
 }
 
@@ -241,7 +255,7 @@ int open_listenfd(int port) {
   bzero((char *)&serveraddr, sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  serveraddr.sin_port = htons(atoi(port));
+  serveraddr.sin_port = htons((unsigned short)(port));
   if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
     error("unable to bind socket\n");
     return -1;

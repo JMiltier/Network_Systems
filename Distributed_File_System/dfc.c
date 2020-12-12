@@ -27,10 +27,12 @@ void error(char *msg);
 
 int main(int argc, char **argv) {
   int sockfd[SVRS];
+  char *n;
   struct sockaddr_in serveraddr[SVRS]; // server sockets (now have 4)
   // struct hostent *server[SVRS];
   char buf[BUFSIZE], cmd[10], filename[50], *config_file;
   char DFS[SVRS][1], S_IP[SVRS][16], S_PORT[SVRS][6], user[30], pass[30];
+  int user_auth = 0;
 
   // check command line arguments
   if (argc != 2) { fprintf(stderr,"usage: %s <config_file>\n", argv[0]); EXIT_FAILURE; }
@@ -46,9 +48,9 @@ int main(int argc, char **argv) {
   FILE *file = fopen(config_file, "r");
   char *line = NULL;
   size_t len = 0, cnt = 0;
-  ssize_t read;
+  ssize_t read_in;
   if (file == NULL) { printf("Configuration file not found.\n"); EXIT_FAILURE; }
-  while ((read = getline(&line, &len, file)) != -1) {
+  while ((read_in = getline(&line, &len, file)) != -1) {
     if (strncmp(line, "Server", 6) == 0) {
       sscanf(line, "Server DFS%s %9s:%s[^\n]", DFS[cnt], S_IP[cnt], S_PORT[cnt]);
       // printf("d:%s i:%s p:%s\n", DFS[cnt], S_IP[cnt], S_PORT[cnt]);
@@ -89,9 +91,19 @@ int main(int argc, char **argv) {
     strcat(buf, pass);
     if ((sendto(sockfd[i], buf, BUFSIZE, 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]))) < 0)
       error("Server authentication");
+    else {
+      buf[0] = '\0';
+      read(sockfd[i], buf, BUFSIZE);
+      printf("authned? %i\n", strcmp(buf, "auth"));
+      if (strcmp(buf, "auth") > 0)
+        user_auth = 1;
+    }
   }
 
-  while (!done) {
+  if (!user_auth)
+    error("Failed to authenicate with server");
+
+  while (!done && user_auth) {
     // make sure input strings are empty each time
     buf[0] = '\0';
     cmd[0] = '\0';
@@ -110,14 +122,14 @@ int main(int argc, char **argv) {
 
     /* ******* list command handling ******* */
     if (!strcmp(cmd, "list")) {
-      // for (int i=0; i < SVRS; i++) {
+      for (int i=0; i < SVRS; i++) {
         char file_list[BUFSIZE];
-        // printf("i: %i \n", i);
-        sendto(sockfd[0], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[0], (socklen_t)sizeof(serveraddr[0]));
-        recvfrom(sockfd[0], file_list, sizeof(file_list), 0, (struct sockaddr *)&serveraddr[0], (socklen_t *)sizeof(&serveraddr[0]));
+        sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], (socklen_t)sizeof(serveraddr[0]));
+        // recvfrom(sockfd[0], file_list, sizeof(file_list), 0, (struct sockaddr *)&serveraddr[0], (socklen_t *)sizeof(&serveraddr[0]));
+        read(sockfd[i], file_list, sizeof(file_list));
         printf("%s\n", file_list);
-      // }
-
+      }
+      done = 1;
     /* ******* get command handling ******* */
     } else if (!strcmp(cmd, "get")) {
       char fn[BUFSIZE];
@@ -133,6 +145,7 @@ int main(int argc, char **argv) {
         fclose(file);
       // file does not exist on server
       } else printf("Unable to get file '%s'. Try again.\n", filename);
+      done = 1;
 
     /* ******* put command handling ******* */
     } else if (!strcmp(cmd, "put")) {
@@ -157,7 +170,7 @@ int main(int argc, char **argv) {
         }
       } else {
         printf("Unable to send file. File '%s' does not exist. Try again.\n", filename);
-      }
+      } done = 1;
 
     /* ******* exit command handling ******* */
     } else if (!strcmp(cmd, "exit")) {
