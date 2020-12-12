@@ -30,7 +30,7 @@ void term(int signum);
 void error(char *msg);
 
 int main(int argc, char **argv) {
-  int sockfd[SVRS], MD5HASH, user_auth = 0;
+  int sockfd[SVRS], MD5HASH = 0, user_auth = 0;
   long int file_size;
   struct sockaddr_in serveraddr[SVRS]; // server sockets (now have 4)
   struct stat st = {0}; // for creating user file structures
@@ -181,16 +181,19 @@ int main(int argc, char **argv) {
         file_size = ftell(file);
         fseek(file, 0L, SEEK_SET);
         printf("filesize %li\n", file_size);
-        int packets = ceil(file_size / BUFSIZE);
+        int packets = ceil(file_size / BUFSIZE) + 1;
         printf("packets %i\n", packets);
         while ((read_in = getline(&line, &len, file)) != -1) {
           CC_MD5_Update(&context, line, (CC_LONG)len);
         }
         CC_MD5_Final(digest, &context);
-        const char* string = "Hello World";
-        for (size_t i=0; i<CC_MD5_DIGEST_LENGTH; ++i)
-          printf("%.2x", digest[i]);
-        printf("hash mod: %i\n", abs(CC_MD5(string,(CC_LONG)strlen(string), digest))%4);
+        char str[10];
+        for (size_t i=0; i<CC_MD5_DIGEST_LENGTH; ++i) {
+          printf("%i\n", digest[i]);
+          snprintf(str, 10, "%d", digest[i]);
+          MD5HASH += atoi(str);
+        }
+        printf("hash mod: %i\n", MD5HASH%4);
         fread(data, file_size, BUFSIZE, file);
         for(int i=0; i < SVRS; i++) {
           sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]));
