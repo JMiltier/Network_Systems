@@ -15,6 +15,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <math.h>
+#include <sys/types.h>   /* for open (UNIX)*/
+#include <sys/stat.h>    /* for open (UNIX)*/
 #include <signal.h> 		/* to gracefully stop */
 
 #define BUFSIZE 4096
@@ -29,10 +31,12 @@ int main(int argc, char **argv) {
   int sockfd[SVRS];
   char *n;
   struct sockaddr_in serveraddr[SVRS]; // server sockets (now have 4)
+  struct stat st = {0}; // for creating user file structures
   // struct hostent *server[SVRS];
   char buf[BUFSIZE], cmd[10], filename[50], *config_file;
   char DFS[SVRS][1], S_IP[SVRS][16], S_PORT[SVRS][6], user[30], pass[30];
   int user_auth = 0;
+
 
   // check command line arguments
   if (argc != 2) { fprintf(stderr,"usage: %s <config_file>\n", argv[0]); EXIT_FAILURE; }
@@ -63,6 +67,14 @@ int main(int argc, char **argv) {
   // printf("Configuration file '%s' successfully parsed.\n", config_file);
   if (line) free(line);
   if (fclose(file) != 0) printf("Not able to close file '%s'.\n", config_file);
+
+   // set working directory, and create a folder to store files
+  char cwd[BUFSIZE];
+  getcwd(cwd, sizeof(cwd));
+	strcat(cwd, "/");
+	strcat(cwd, user);
+  if (stat(cwd, &st) == -1)
+      mkdir(cwd, 0700);
 
   for (int i=0; i < SVRS; i++) {
     // build the server's Internet addresses
@@ -124,27 +136,31 @@ int main(int argc, char **argv) {
     if (!strcmp(cmd, "list")) {
       for (int i=0; i < SVRS; i++) {
         char file_list[BUFSIZE];
-        sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], (socklen_t)sizeof(serveraddr[0]));
+        sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], (socklen_t)sizeof(serveraddr[i]));
         // recvfrom(sockfd[0], file_list, sizeof(file_list), 0, (struct sockaddr *)&serveraddr[0], (socklen_t *)sizeof(&serveraddr[0]));
         read(sockfd[i], file_list, sizeof(file_list));
-        printf("%s\n", file_list);
+        printf("%s", file_list);
       }
       done = 1;
     /* ******* get command handling ******* */
     } else if (!strcmp(cmd, "get")) {
       char fn[BUFSIZE];
+      if (strncmp(filename, "/", 1) != 0) strcat(cwd, "/");
+      strcat(cwd, filename);
       for (int i=0; i < SVRS; i++) {
         sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]));
-        recvfrom(sockfd[i], &(fn), sizeof(fn), 0, (struct sockaddr *)&serveraddr[i], (socklen_t *)sizeof(serveraddr[i]));
+        read(sockfd[i], &(fn), sizeof(fn));
+        // file is on server
+        if (fn[0] != '\0'){
+          FILE *file = fopen(cwd, "wb");
+          fwrite(fn, 1, strlen(fn), file);
+          printf("File '%s' copied in from %s:%s.\n", filename, S_IP[i], S_PORT[i]);
+          fclose(file);
+        // file does not exist on server
+        } else printf("Unable to get file '%s' from %s:%s. Try again.\n", filename, S_IP[i], S_PORT[i]);
+        // reset fn for each read
+        fn[0] = '\0';
       }
-      // file is on server
-      if (fn[0] != '\0'){
-        FILE *file = fopen(filename, "wb");
-        fwrite(fn, 1, strlen(fn), file);
-        printf("File '%s' copied in.\n", filename);
-        fclose(file);
-      // file does not exist on server
-      } else printf("Unable to get file '%s'. Try again.\n", filename);
       done = 1;
 
     /* ******* put command handling ******* */

@@ -173,12 +173,12 @@ void server_res(int connfd) {
         char file_list[BUFSIZE];
         char files[BUFSIZE] = "";
         int i = 2;
-        while (i < n) {
+        do {
           sprintf(file_list, "%s\n", namelist[i]->d_name);
           free(namelist[i]);
           strcat(files, file_list);
           i++;
-        }
+        } while (i < n);
         free(namelist);
         // return file list to client
         // sendto(connfd, files, BUFSIZE, 0, (struct sockaddr *) &clientaddr, clientlen);
@@ -187,9 +187,12 @@ void server_res(int connfd) {
       /* ******* get command handling ******* */
       } else if (!strcmp(cmd_in, "get")) {
         char data[BUFSIZE];
-        if (access(filename_in, F_OK) != -1) {
+        if (strncmp(filename_in, "/", 1) != 0)
+          strcat(cwd, "/");
+        strcat(cwd, filename_in);
+        if (access(cwd, F_OK) != -1) {
           // open file to send
-          FILE *file = fopen(filename_in, "rb");
+          FILE *file = fopen(cwd, "rb");
           fseek(file, 0L, SEEK_END);
           long int file_size = ftell(file);
           fseek(file, 0, SEEK_SET);
