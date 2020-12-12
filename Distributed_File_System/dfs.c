@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
   char buf[BUFSIZE]; // message buf
   int optval; // flag value for setsockopt
   int n, snd; // message byte size
+  struct stat st = {0}; // for creating user file structures
   char cmd_in[10], filename_in[30]; // incoming command and filename
   int listenfd, *connfdp, port;
   pthread_t tid;
@@ -67,6 +68,14 @@ int main(int argc, char **argv) {
   }
   strcpy(server_name, argv[1]);
   port = atoi(argv[2]);
+
+  // create the server folder if it doesn't exist
+  char cwd[BUFSIZE];
+  getcwd(cwd, sizeof(cwd));
+	strcat(cwd, "/");
+	strcat(cwd, server_name);
+  if (stat(cwd, &st) == -1)
+      mkdir(cwd, 0700);
 
   // gracefully exit
   struct sigaction action;
