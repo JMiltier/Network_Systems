@@ -13,9 +13,7 @@ webproxy
 
 # file structures added
 /DFS*
-/Jman*
 /*
 
 # folder for zip
 /jo*/
-/page_caches/

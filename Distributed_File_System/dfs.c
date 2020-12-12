@@ -170,6 +170,7 @@ void server_res(int connfd) {
     n = recvfrom(connfd, buf, BUFSIZE, 0, (struct sockaddr *) &clientaddr, &clientlen);
     if (n < 0)
       error("ERROR in recvfrom");
+    write(connfd, "ready", 5);
     sscanf(buf, "%s %s", cmd_in, filename_in);
 
     // format the filename_in to point to right spot
@@ -218,6 +219,7 @@ void server_res(int connfd) {
       } else if (!strcmp(cmd_in, "put")) {
         char data[BUFSIZE];
         read(connfd, data, BUFSIZE);
+        printf("data put %s\n",data);
         FILE *file = fopen(cwd, "wb");
         fprintf(file, "%s", data);
         fclose(file);
