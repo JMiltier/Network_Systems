@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <math.h>
+#include <dirent.h>      /* for directory */
 #include <sys/types.h>   /* for open (UNIX)*/
 #include <sys/stat.h>    /* for open (UNIX)*/
 #include <signal.h> 		/* to gracefully stop */
@@ -83,6 +84,18 @@ int main(int argc, char **argv) {
 	strcat(cwd, user);
   if (stat(cwd, &st) == -1)
       mkdir(cwd, 0700);
+
+  // add a test file if user dir is empty
+  struct dirent **namelist;
+  if(scandir(cwd, &namelist, NULL, NULL) < 3) {
+    char test_file[BUFSIZE];
+    strcpy(test_file, cwd);
+    strcat(test_file, "/test.txt");
+    FILE *file = fopen(test_file, "wb");
+    fprintf(file, "Generated test data from CLIENT.");
+    fclose(file);
+  }
+  free(namelist);
 
   for (int i=0; i < SVRS; i++) {
     // build the server's Internet addresses

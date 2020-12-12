@@ -219,9 +219,8 @@ void server_res(int connfd) {
       } else if (!strcmp(cmd_in, "put")) {
         char data[BUFSIZE];
         read(connfd, data, BUFSIZE);
-        printf("data put %s\n",data);
         FILE *file = fopen(cwd, "wb");
-        fprintf(file, "%s", data);
+        fwrite(data, sizeof(char), strlen(data), file);
         fclose(file);
 
       /* ******* exit command handling ******* */
