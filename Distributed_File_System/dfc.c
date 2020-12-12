@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     // socket: create the socket {SOCK_DGRAM}
     sockfd[i] = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd[i] < 0)
-        error("ERROR opening socket");
+        error("erro opening socket");
 
     // attempt to connect to server, timeout after 1 second
     struct timeval timeout;
@@ -105,22 +105,18 @@ int main(int argc, char **argv) {
            "\n  exit"
            "\n\n> ");
 
-    // empty buffer
-    buf[0] = '\0';
-
     scanf(" %[^\n]%*c", buf); // get line, ignoring the newline <enter> and empty <enter>
     sscanf(buf, "%s %s", cmd, filename); // assign command and filename
 
     /* ******* list command handling ******* */
     if (!strcmp(cmd, "list")) {
-      char file_list[BUFSIZE];
-      for (int i=0; i < SVRS; i++) {
-        if (sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i])) < 0)
-          error("error in list cmd send");
-        if (recvfrom(sockfd[i], file_list, sizeof(file_list), 0, (struct sockaddr *)&serveraddr[i], (socklen_t *)sizeof(serveraddr[i])) < 0)
-          error("error in list cmd rcv");
+      // for (int i=0; i < SVRS; i++) {
+        char file_list[BUFSIZE];
+        // printf("i: %i \n", i);
+        sendto(sockfd[0], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[0], (socklen_t)sizeof(serveraddr[0]));
+        recvfrom(sockfd[0], file_list, sizeof(file_list), 0, (struct sockaddr *)&serveraddr[0], (socklen_t *)sizeof(&serveraddr[0]));
         printf("%s\n", file_list);
-      }
+      // }
 
     /* ******* get command handling ******* */
     } else if (!strcmp(cmd, "get")) {
