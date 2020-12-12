@@ -139,6 +139,10 @@ int main(int argc, char **argv) {
     scanf(" %[^\n]%*c", buf); // get line, ignoring the newline <enter> and empty <enter>
     sscanf(buf, "%s %s", cmd, filename); // assign command and filename
 
+    // add filename to cwd
+    if (strncmp(filename, "/", 1) != 0) strcat(cwd, "/");
+    strcat(cwd, filename);
+
     /* ************** list command handling ************** */
     if (!strcmp(cmd, "list")) {
       for (int i=0; i < SVRS; i++) {
@@ -152,8 +156,6 @@ int main(int argc, char **argv) {
     /* ************** get command handling ************** */
     } else if (!strcmp(cmd, "get")) {
       char fn[BUFSIZE];
-      if (strncmp(filename, "/", 1) != 0) strcat(cwd, "/");
-      strcat(cwd, filename);
       for (int i=0; i < SVRS; i++) {
         sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]));
         read(sockfd[i], &(fn), sizeof(fn));
@@ -189,15 +191,24 @@ int main(int argc, char **argv) {
         CC_MD5_Final(digest, &context);
         char str[10];
         for (size_t i=0; i<CC_MD5_DIGEST_LENGTH; ++i) {
-          printf("%i\n", digest[i]);
+          // printf("%i\n", digest[i]);
           snprintf(str, 10, "%d", digest[i]);
           MD5HASH += atoi(str);
         }
-        printf("hash mod: %i\n", MD5HASH%4);
-        fread(data, file_size, BUFSIZE, file);
+        // printf("hash mod: %i\n", MD5HASH%4);
+        // fread(data, file_size, BUFSIZE, file);
         for(int i=0; i < SVRS; i++) {
+          fseek(file, 0L, SEEK_SET);
+          // send the command and file to each
           sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]));
-          printf("File '%s' sent.\n", filename);
+          if (file < 0) printf("unable to open file %s\n", cwd);
+          // read in file contents and send to client
+          data[0] = '\0'; len = 0;
+          // write the data of the file to DFS
+          while((len = fread(data, 1, sizeof(data), file)) > 0) {
+            write(sockfd[i], data, len);
+          }
+          printf("File '%s' sent to %s:%s.\n", filename, S_IP[i], S_PORT[i]);
         }
         fclose(file);
       } else {

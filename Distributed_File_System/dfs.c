@@ -207,8 +207,10 @@ void server_res(int connfd) {
 
       // /* ******* put command handling ******* */
       } else if (!strcmp(cmd_in, "put")) {
-        FILE *file = fopen(filename_in, "wb");
-        fwrite(&file, 1, BUFSIZE, file);
+        char data[BUFSIZE];
+        read(connfd, data, BUFSIZE);
+        FILE *file = fopen(cwd, "wb");
+        fprintf(file, "%s", data);
         fclose(file);
 
       /* ******* exit command handling ******* */
