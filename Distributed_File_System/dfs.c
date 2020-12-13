@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
   while (!done) {
     connfdp = malloc(sizeof(int));
     if((*connfdp = accept(listenfd, (struct sockaddr *)&clientaddr, &clientlen)) < 0)
-      printf("accept failure\n");
+      error("accept failure");
     // printf("Connected to http://localhost:%i on socket %i\n", port, *connfdp);
     pthread_create(&tid, NULL, thread, connfdp);
   }
@@ -119,8 +119,8 @@ void server_res(int connfd) {
   size_t n;
   char buf[BUFSIZE], auth[MAXLINE], *filetype;
   char cmd_in[10], filename_in[30]; // incoming command and filename
-  char user_in[30], pass_in[30];
-  int filedesc, socket_msg, filesize, filetype_index;
+  char user_in[30], pass_in[30], local_cwd[BUFSIZE];
+  int filedesc, socket_msg, filesize, filetype_index, user_auth = 0;
   struct sockaddr_in clientaddr; // client addr
   socklen_t clientlen; // byte size of client's address
   struct stat st = {0}; // for creating user file structures
@@ -146,7 +146,8 @@ void server_res(int connfd) {
     if (stat(cwd, &st) == -1)
       mkdir(cwd, 0700);
     write(connfd, "authed", 6);
-  } else printf("Invalid user.\n");
+    user_auth = 1;
+  } else printf("Invalid user '%s'.\n", user_in);
 
   // idle response
   time_t rawtime;
@@ -159,80 +160,86 @@ void server_res(int connfd) {
     printf("Socket error.\n");
 
   // connected
-  else if (socket_msg > 0) {
+  else if (socket_msg > 0 && user_auth) {
     printf("** Client connected. **\n");
-    buf[0] = '\0';
-    cmd_in[0] = '\0';
-    filename_in[0] = '\0';
+    while(1) {
+      buf[0] = '\0';
+      cmd_in[0] = '\0';
+      filename_in[0] = '\0';
+      local_cwd[0] = '\0';
 
-    // recvfrom: receive a UDP datagram from a client
-    bzero(buf, BUFSIZE);
-    n = recvfrom(connfd, buf, BUFSIZE, 0, (struct sockaddr *) &clientaddr, &clientlen);
-    if (n < 0)
-      error("ERROR in recvfrom");
-    write(connfd, "ready", 5);
-    sscanf(buf, "%s %s", cmd_in, filename_in);
+      // recvfrom: receive a UDP datagram from a client
+      bzero(buf, BUFSIZE);
+      n = recvfrom(connfd, buf, BUFSIZE, 0, (struct sockaddr *) &clientaddr, &clientlen);
+      if (n < 0)
+        error("ERROR in recvfrom");
+      write(connfd, "ready", 5);
+      sscanf(buf, "%s %s", cmd_in, filename_in);
+      if (strncmp(cmd_in, "", 1) < 0) printf("no cmd\n");
 
-    // format the filename_in to point to right spot
-    if (strncmp(filename_in, "/", 1) != 0) strcat(cwd, "/");
-    strcat(cwd, filename_in);
+      // format the filename_in to point to right spot
+      strcat(local_cwd, cwd);
+      if (strncmp(filename_in, "/", 1) != 0) strcat(local_cwd, "/");
+      strcat(local_cwd, filename_in);
 
-    // user has authenticated
-    if (login_auth == 1) {
-      // format for server
-      /* ******* list command handling ******* */
-      if (!strcmp(cmd_in, "list")) {
-        struct dirent **namelist;
-        n = scandir(cwd, &namelist, NULL, alphasort);
-        char file_list[BUFSIZE];
-        char files[BUFSIZE] = "";
-        int i = 2;
-        while (i < n) {
-          sprintf(file_list, "%s\n", namelist[i]->d_name);
-          free(namelist[i]);
-          strcat(files, file_list);
-          i++;
-        }
-        free(namelist);
-        // return file list to client
-        // sendto(connfd, files, BUFSIZE, 0, (struct sockaddr *) &clientaddr, clientlen);
-        write(connfd, files, BUFSIZE);
+      // user has authenticated
+      if (login_auth) {
+        // format for server
+        /* ******* list command handling ******* */
+        if (!strcmp(cmd_in, "list")) {
+          DIR *folder;
+          struct dirent *namelist;
+          folder = opendir(local_cwd);
+          char file_list[BUFSIZE];
+          char files[BUFSIZE] = "";
+          while ((namelist = readdir(folder))) {
+            sprintf(file_list, "%s\n", namelist->d_name);
+            if (strncmp(file_list, ".", 1))
+              strcat(files, file_list);
+          }
+          // return file list to client
+          write(connfd, files, BUFSIZE);
+          free(namelist);
+          closedir(folder);
 
-      /* ******* get command handling ******* */
-      } else if (!strcmp(cmd_in, "get")) {
-        char data[BUFSIZE];
-        if (access(cwd, F_OK) != -1) {
-          // open file to send
-          FILE *file = fopen(cwd, "rb");
-          fseek(file, 0L, SEEK_END);
-          long int file_size = ftell(file);
-          fseek(file, 0, SEEK_SET);
-          fread(data, BUFSIZE, file_size, file);
+        /* ******* get command handling ******* */
+        } else if (!strcmp(cmd_in, "get")) {
+          buf[0] = '\0';
+          if (access(local_cwd, F_OK) != -1) {
+            // open file to send
+            FILE *file = fopen(local_cwd, "rb");
+            fseek(file, 0L, SEEK_END);
+            long int file_size = ftell(file);
+            fseek(file, 0, SEEK_SET);
+            fread(buf, BUFSIZE, file_size, file);
+            fclose(file);
+            write(connfd, &(buf), file_size);
+          } else {
+            buf[0] = '\0';
+            write(connfd, &(buf), 0);
+          }
+
+        // /* ******* put command handling ******* */
+        } else if (!strcmp(cmd_in, "put")) {
+          buf[0] = '\0';
+          read(connfd, buf, BUFSIZE);
+          FILE *file = fopen(local_cwd, "wb");
+          fwrite(buf, sizeof(char), strlen(buf), file);
           fclose(file);
-          write(connfd, &(data), file_size);
-        } else {
-          data[0] = '\0';
-          write(connfd, &(data), 0);
-        }
 
-      // /* ******* put command handling ******* */
-      } else if (!strcmp(cmd_in, "put")) {
-        char data[BUFSIZE];
-        read(connfd, data, BUFSIZE);
-        FILE *file = fopen(cwd, "wb");
-        fwrite(data, sizeof(char), strlen(data), file);
-        fclose(file);
+        /* ******* exit command handling ******* */
+        } else if (!strcmp(cmd_in,"exit")) {
+          printf("Client @ %d exited.\n", connfd);
+          login_auth = 0;
+          break;
+          // exit(0); // probably shouldn't allow from client side
 
-      /* ******* exit command handling ******* */
-      } else if (!strcmp(cmd_in,"exit")) {
-        printf("Client @ %d exited.\n", connfd);
-        shutdown(connfd, 0);
-        close(connfd);
-        // exit(0); // probably shouldn't allow from client side
-
-      /* ******* trash command handling ******* */
-      } else printf("Invalid command from client.\n");
-    } else write(connfd, "Not authorized.", 0);
+        /* ******* trash command handling ******* */
+        } else printf("Invalid command from client.\n");
+      } else write(connfd, "Not authorized.", 0);
+    } // end while loop
+    shutdown(connfd, 0);
+    close(connfd);
   }
 }
 
