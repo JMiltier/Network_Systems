@@ -41,11 +41,6 @@ int main(int argc, char **argv) {
   unsigned char digest[CC_MD5_DIGEST_LENGTH];
   CC_MD5_CTX context;
   CC_MD5_Init(&context);
-  int CC_MD5_Table[SVRS][SVRS*2] =
-    {{1,2,2,3,3,4,4,1},
-     {4,1,1,2,2,3,3,4},
-     {3,4,4,1,1,2,2,3},
-     {2,3,3,4,4,1,1,2}};
 
   // check command line arguments
   if (argc != 2) { fprintf(stderr,"usage: %s <config_file>\n", argv[0]); EXIT_FAILURE; }
@@ -100,7 +95,6 @@ int main(int argc, char **argv) {
 
     // socket: create the socket {SOCK_DGRAM}
     sockfd[i] = socket(AF_INET, SOCK_STREAM, 0);
-    printf("socker %i\n", sockfd[i]);
     if (sockfd[i] < 0)
       perror("error opening socket");
 
@@ -176,8 +170,9 @@ int main(int argc, char **argv) {
       for (int i=0; i < SVRS && servers[i]; i++) {
         // send cmd/filename to each server, and spin wait for response before continuing
         sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]));
-        spin_wait[0] = '\0'; read(sockfd[i], spin_wait, 10);
-        while(strcmp(spin_wait, "ready") < 0) {}
+        spin_wait[0] = '\0';
+        while(strcmp(spin_wait, "ready") < 0)
+          read(sockfd[i], spin_wait, 10);
         read(sockfd[i], &(fn), sizeof(fn));
         // file is on server
         if (fn[0] != '\0'){
@@ -210,22 +205,29 @@ int main(int argc, char **argv) {
         CC_MD5_Final(digest, &context);
         char str[10];
         for (size_t i=0; i<CC_MD5_DIGEST_LENGTH; ++i) {
-          // printf("%i\n", digest[i]);
           snprintf(str, 10, "%d", digest[i]);
           MD5HASH += atoi(str);
         }
-        MD5HASH = MD5HASH % 4;
+        char tmp_buf[BUFSIZE];
         for(int i=0; i < SVRS && servers[i]; i++) {
-          // send cmd/filename to each server, and spin wait for response before continuing
-          sendto(sockfd[i], buf, strlen(buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]));
-          spin_wait[0] = '\0'; read(sockfd[i], spin_wait, 10);
-          while(strcmp(spin_wait, "ready") < 0) {}
-          // read in file contents and send to client
-          fseek(file, 0L, SEEK_SET);
-          data[0] = '\0'; len = 0;
-          // write the data of the file to DFS
-          while((len = fread(data, 1, sizeof(data), file)) > 0) {
-            write(sockfd[i], data, len);
+          for(int j=0; j<2; j++) {
+            tmp_buf[0] = '\0'; str[0] = '\0';
+            sprintf(str, ".%d", (MD5HASH + i + j) % SVRS);
+            strcpy(tmp_buf, buf);
+            strcat(tmp_buf, str);
+            // send cmd/filename to each server, and spin wait for response before continuing
+            printf("buf put %s\n", tmp_buf);
+            sendto(sockfd[i], tmp_buf, strlen(tmp_buf), 0, (struct sockaddr *)&serveraddr[i], sizeof(serveraddr[i]));
+            spin_wait[0] = '\0';
+            while(strcmp(spin_wait, "ready") < 0)
+              read(sockfd[i], spin_wait, 10);
+            // read in file contents and send to client
+            fseek(file, 0L, SEEK_SET);
+            data[0] = '\0'; len = 0;
+            // write the data of the file to DFS
+            while((len = fread(data, 1, sizeof(data), file)) > 0) {
+              write(sockfd[i], data, len);
+            }
           }
           printf("File '%s' sent to %s:%s.\n", filename, S_IP[i], S_PORT[i]);
         }

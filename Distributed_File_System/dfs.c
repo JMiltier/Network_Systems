@@ -175,7 +175,8 @@ void server_res(int connfd) {
         error("ERROR in recvfrom");
       write(connfd, "ready", 5);
       sscanf(buf, "%s %s", cmd_in, filename_in);
-      if (strncmp(cmd_in, "", 1) < 0) printf("no cmd\n");
+
+      printf("buf: %s\n", buf);
 
       // format the filename_in to point to right spot
       strcat(local_cwd, cwd);
@@ -221,11 +222,41 @@ void server_res(int connfd) {
 
         // /* ******* put command handling ******* */
         } else if (!strcmp(cmd_in, "put")) {
+          // format the filename_in to point to right spot
+          local_cwd[0] = '\0';
+          strcat(local_cwd, cwd);
+          if (strncmp(filename_in, "/", 1) != 0) strcat(local_cwd, "/");
+          strcat(local_cwd, filename_in);
+
           buf[0] = '\0';
+          printf("in put?\n");
           read(connfd, buf, BUFSIZE);
           FILE *file = fopen(local_cwd, "wb");
           fwrite(buf, sizeof(char), strlen(buf), file);
           fclose(file);
+
+          // recvfrom: receive a UDP datagram from a client
+          bzero(buf, BUFSIZE);
+          n = recvfrom(connfd, buf, BUFSIZE, 0, (struct sockaddr *) &clientaddr, &clientlen);
+          if (n < 0)
+            error("ERROR in recvfrom");
+          write(connfd, "ready", 5);
+          sscanf(buf, "%s %s", cmd_in, filename_in);
+
+          printf("buf: %s\n", buf);
+
+          // format the filename_in to point to right spot
+          local_cwd[0] = '\0';
+          strcat(local_cwd, cwd);
+          if (strncmp(filename_in, "/", 1) != 0) strcat(local_cwd, "/");
+          strcat(local_cwd, filename_in);
+
+          buf[0] = '\0';
+          read(connfd, buf, BUFSIZE);
+          FILE *file2 = fopen(local_cwd, "wb");
+          printf("in put2?\n");
+          fwrite(buf, sizeof(char), strlen(buf), file2);
+          fclose(file2);
 
         /* ******* exit command handling ******* */
         } else if (!strcmp(cmd_in,"exit")) {
