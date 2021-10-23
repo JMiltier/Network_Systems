@@ -2,7 +2,7 @@
 An HTTP web server that can handle multiple simultaneous requests from users. An HTTP **request** from a client is received, processed, and those results are sent back to the client as a **response**. HTTP requests consist of three substrings: request method (GET, HEAD, POST, etc.), request URL (separated by '/', treated as a relative path), and request version ('HTTP/x,y', where *x* & *y* are numbers).
 
 ### Program
-A *C Language* based program that sends TCP commands/requests to an HTTP server. The web server returns the response back to the client.
+*C Language* based program that sends TCP commands/requests to an HTTP server. The web server returns the response back to the client.
 
 ## ⚙️ SETUP
 #### Web server testing
